@@ -1,5 +1,8 @@
 """Run periodically to expire holds and deliver queued transactional mail."""
+import logging
 import os
+import sys
+import time
 import smtplib
 from email.message import EmailMessage
 
@@ -39,4 +42,12 @@ def run():
 
 
 if __name__ == "__main__":
-    run()
+    if "--loop" not in sys.argv:
+        run()
+    else:
+        while True:
+            try:
+                run()
+            except Exception:
+                logging.exception("TallerYA background job failed")
+            time.sleep(60)

@@ -69,7 +69,8 @@ export function Catalog({workshops,locale,learn}:{workshops:Workshop[];locale:Lo
     <div ref={trackRef} tabIndex={0} className="grid snap-x grid-flow-col auto-cols-[min(100%,19rem)] gap-4 overflow-x-auto pb-4">
       {workshops.map(workshop=><article key={workshop.id} id={`taller-${workshop.id}`} className="panel snap-start">
         <h3 className="text-xl font-bold">{workshop[locale]}</h3>
-        <p>{dateOf(workshop.starts,locale)} · {workshop.minutes/60} h</p>
+        <p><time dateTime={new Date(workshop.starts*1000).toISOString()}>{dateOf(workshop.starts,locale)}</time> · {workshop.minutes/60} h</p>
+        {workshop.venue && <p>{workshop.venue}</p>}
         <p className="mb-4">{money(workshop.price,workshop.currency,locale)} · {workshop.available} {locale==="es"?"plazas":"places"}</p>
         <a className="button" onClick={()=>track("booking_open",locale)} href={`${learn}?taller=${workshop.id}`}>
           {workshop.available ? (locale==="es"?"Reservar":"Book") : (locale==="es"?"Avisarme":"Notify me")}

@@ -8,6 +8,10 @@ import type {Locale,Workshop} from "../../shared";
 type User={id:number;name:string;email:string;phone:string;notices:boolean;role:"student"|"teacher"|"manager"|"owner"};
 type Booking={id:number;workshop:number;user:number;status:string;es:string;en:string;starts:number;minutes:number;contact?:{name:string;email:string;phone:string};deadline:number|null;has_certificate:boolean;refund:number;refunded:number};
 type Settlement={currency:string;count:number;paid:number;refunded:number;tallerya:number;teacher:number};
+type Overview={
+  popular:{id:number;es:string;en:string;registrations:number;confirmed:number}[];
+  earnings:{currency:string;payments:number;paid:number;refunded:number;tallerya:number;teacher:number}[];
+};
 type EventCount={name:string;locale:string;total:number};
 
 async function request<T>(path:string,method="GET",data?:unknown):Promise<T>{
@@ -39,8 +43,11 @@ export default function Portal({locale,selected}:{locale:Locale;selected?:number
   const [bookings,setBookings]=useState<Booking[]>([]);
   const [users,setUsers]=useState<User[]>([]);
   const [teachers,setTeachers]=useState<Pick<User,"id"|"name">[]>([]);
+  const [overview,setOverview]=useState<Overview|null>(null);
+  const [certificateBooking,setCertificateBooking]=useState("");
   const [events,setEvents]=useState<EventCount[]>([]);
   const [workshop,setWorkshop]=useState<Workshop|null>(null);
+  const [registrationSearch,setRegistrationSearch]=useState("");
   const [editing,setEditing]=useState<Workshop|null>(null);
   const [settlement,setSettlement]=useState<Settlement[]|null>(null);
   const isStaff=profile?.role==="owner" || profile?.role==="manager";
@@ -63,11 +70,11 @@ export default function Portal({locale,selected}:{locale:Locale;selected?:number
     }else{
       setAgenda(await request<Workshop[]>("admin/workshops"));
       if(user.role==="owner" || user.role==="manager"){
-        const [all,counts,staffTeachers]=await Promise.all([
+        const [all,counts,staffTeachers,summary]=await Promise.all([
           request<Booking[]>("admin/bookings"), request<EventCount[]>("admin/telemetry"),
-          request<Pick<User,"id"|"name">[]>("admin/teachers"),
+          request<Pick<User,"id"|"name">[]>("admin/teachers"),request<Overview>("admin/overview"),
         ]);
-        setBookings(all);setEvents(counts);setTeachers(staffTeachers);
+        setBookings(all);setEvents(counts);setTeachers(staffTeachers);setOverview(summary);
       }
       if(user.role==="owner") setUsers(await request<User[]>("admin/users"));
     }
@@ -111,13 +118,18 @@ export default function Portal({locale,selected}:{locale:Locale;selected?:number
   async function saveWorkshop(data:FormData){
     const payload={es:data.get("es"),en:data.get("en"),starts:data.get("starts")+"-05:00",
       minutes:Math.round(Number(data.get("hours"))*60),price:Math.round(Number(data.get("price"))*100),
-      capacity:Number(data.get("capacity")),currency:data.get("currency"),published:data.has("published"),
+      capacity:Number(data.get("capacity")),venue:data.get("venue"),currency:data.get("currency"),published:data.has("published"),
       teacher:Number(data.get("teacher"))||null};
     await request("admin/workshops"+(editing?"/"+editing.id:""),editing?"PUT":"POST",payload);
     setEditing(null);
     if(profile) await refresh(profile);
     setMessage(t("Curso guardado.","Workshop saved."));
   }
+
+  const search = registrationSearch.trim().toLocaleLowerCase(locale);
+  const registrations = bookings.filter(item => [
+    item[locale], item.contact?.name, item.contact?.email, item.contact?.phone,
+  ].some(value=>value?.toLocaleLowerCase(locale).includes(search)));
 
   const status:Record<string,string>={
     hold:t("Pendiente de envío de pago","Awaiting payment instructions"),payment:t("Pendiente de pago","Awaiting payment"),
@@ -185,6 +197,19 @@ export default function Portal({locale,selected}:{locale:Locale;selected?:number
         </div>}
       </article>))}
       {isStaff && <>
+        {overview && title(t("Talleres populares","Popular workshops"),<div className="overflow-x-auto">
+          <table aria-label={t("Talleres populares","Popular workshops")} className="w-full text-left">
+            <thead><tr><th>{t("Taller","Workshop")}</th><th>{t("Inscripciones","Registrations")}</th><th>{t("Confirmadas","Confirmed")}</th></tr></thead>
+            <tbody>{overview.popular.map(row=><tr key={row.id} className="border-t border-slate-200"><th scope="row" className="py-2">{row[locale]}</th><td>{row.registrations}</td><td>{row.confirmed}</td></tr>)}</tbody>
+          </table></div>)}
+        {overview && title(t("Panel de ganancias","Earnings dashboard"),<>
+          <p>{t("Reparto antes de impuestos y gastos","Split before taxes and expenses")}</p>
+          <div className="overflow-x-auto"><table aria-label={t("Panel de ganancias","Earnings dashboard")} className="w-full min-w-[35rem] text-left">
+            <thead><tr><th>{t("Moneda","Currency")}</th><th>{t("Cobrado","Paid")}</th><th>{t("Reembolsado","Refunded")}</th><th>TallerYA · 20%</th><th>{t("Formador · 80%","Instructor · 80%")}</th></tr></thead>
+            <tbody>{overview.earnings.map(row=><tr key={row.currency} className="border-t border-slate-200"><th scope="row" className="py-2">{row.currency}</th>
+              {[row.paid,row.refunded,row.tallerya,row.teacher].map((amount,index)=><td key={index}>{money(amount,row.currency,locale)}</td>)}</tr>)}</tbody>
+          </table></div>
+        </>)}
         {settlement && title(t("Reparto antes de impuestos y gastos","Split before taxes and expenses"),
           settlement.length ? settlement.map(row=><p key={row.currency}>{row.count} {t("pagos","payments")} · {t("Cobrado","Paid")} {money(row.paid,row.currency,locale)} · {t("Reembolsado","Refunded")} {money(row.refunded,row.currency,locale)} · TallerYA {money(row.tallerya,row.currency,locale)} · {t("Profesor","Instructor")} {money(row.teacher,row.currency,locale)}</p>) : <p>{t("Sin cobros registrados.","No payments recorded.")}</p>)}
         {title(editing?t("Editar edición","Edit workshop"):t("Nueva edición","New workshop"),<form key={editing?.id??"new"} className="grid gap-3 sm:grid-cols-2" onSubmit={form(saveWorkshop)}>
@@ -193,6 +218,7 @@ export default function Portal({locale,selected}:{locale:Locale;selected?:number
           <Field name="starts" type="datetime-local" label={t("Inicio en Bogotá","Start in Bogotá")} value={editing?new Date((editing.starts-18000)*1000).toISOString().slice(0,16):undefined}/>
           <Field name="hours" type="number" step="any" min={0.02} label={t("Duración en horas","Duration in hours")} value={editing?editing.minutes/60:undefined}/>
           <Field name="price" type="number" min={0.01} step=".01" label={t("Precio por persona","Price per person")} value={editing?editing.price/100:undefined}/>
+          <Field name="venue" label={t("Lugar o dirección en Bogotá","Venue or address in Bogotá")} value={editing?.venue}/>
           <Field name="capacity" type="number" min={1} label={t("Cupo máximo","Maximum capacity")} value={editing?.capacity}/>
           <label className="field">{t("Moneda","Currency")}<select name="currency" defaultValue={editing?.currency??"COP"}>{["COP","USD","EUR"].map(currency=><option key={currency}>{currency}</option>)}</select></label>
           <label className="field">{t("Profesor","Instructor")}<select name="teacher" defaultValue={editing?.teacher??""}><option value="">{t("Por asignar","Unassigned")}</option>{teachers.map(teacher=><option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}</select></label>
@@ -200,7 +226,12 @@ export default function Portal({locale,selected}:{locale:Locale;selected?:number
           <div className="flex flex-wrap gap-2"><button className="button">{t("Guardar","Save")}</button>
             {editing && <button type="button" className="underline" onClick={()=>setEditing(null)}>{t("Dejar de editar","Stop editing")}</button>}</div>
         </form>)}
-        {title(t("Gestionar reservas","Manage bookings"),bookings.map(booking=><article key={booking.id} className="space-y-2 border-t border-slate-200 py-3">
+        {title(t("Gestionar inscripciones","Manage registrations"),<>
+          <label className="field max-w-md">{t("Buscar inscripciones","Search registrations")}
+            <input type="search" value={registrationSearch} onChange={event=>setRegistrationSearch(event.target.value)}/>
+          </label>
+          {!registrations.length && <p>{t("No hay inscripciones que coincidan.","No matching registrations.")}</p>}
+          {registrations.map(booking=><article key={booking.id} className="space-y-2 border-t border-slate-200 py-3">
           <h3 className="font-bold">#{booking.id} · {booking[locale]} · {status[booking.status]}</h3>
           {booking.contact && <p>{booking.contact.name} · {booking.contact.phone} · {booking.contact.email}</p>}
           {booking.status==="hold" && <form className="flex flex-wrap items-end gap-2" onSubmit={form(async data=>{
@@ -211,11 +242,22 @@ export default function Portal({locale,selected}:{locale:Locale;selected?:number
           {booking.refund>0 && <form className="flex flex-wrap items-end gap-2" onSubmit={form(async data=>{
             await request(`admin/bookings/${booking.id}/refund`,"POST",{amount:Math.round(Number(data.get("amount"))*100)});await refresh(profile);
           })}><Field name="amount" type="number" step=".01" min={0.01} value={booking.refunded/100||undefined} label={t("Total reembolsado","Total refunded")}/><button className="button">{t("Registrar reembolso","Record refund")}</button></form>}
-          {booking.status==="confirmed" && booking.starts+booking.minutes*60<=Date.now()/1000 && <form onSubmit={form(async data=>{
-            await request(`admin/bookings/${booking.id}/certificate`,"PUT",data.get("pdf"));await refresh(profile);
-            setMessage(t("Certificado guardado.","Certificate saved."));
-          })}><label className="field">{t("Certificado en PDF","PDF certificate")}<input name="pdf" type="file" accept="application/pdf" required/></label><button className="button mt-2">{t("Publicar certificado","Publish certificate")}</button></form>}
-        </article>))}
+        </article>)}</>)}
+        {title(t("Certificados PDF","PDF certificates"),<form className="flex flex-wrap items-end gap-3" onSubmit={form(async data=>{
+          await request(`admin/bookings/${certificateBooking}/certificate`,"PUT",data.get("pdf"));
+          await refresh(profile);
+          setMessage(t("Certificado guardado.","Certificate saved."));
+        })}>
+          <label className="field">{t("Inscripción finalizada","Completed registration")}
+            <select required value={certificateBooking} onChange={event=>setCertificateBooking(event.target.value)}>
+              <option value="">{t("Seleccionar","Select")}</option>
+              {bookings.filter(booking=>booking.status==="confirmed" && booking.starts+booking.minutes*60<=Date.now()/1000)
+                .map(booking=><option key={booking.id} value={booking.id}>{booking[locale]} · {booking.contact?.name} {booking.has_certificate?t("(publicado)","(published)"):""}</option>)}
+            </select>
+          </label>
+          <label className="field">{t("Certificado en PDF","PDF certificate")}<input name="pdf" type="file" accept="application/pdf" required/></label>
+          <button className="button">{t("Publicar certificado","Publish certificate")}</button>
+        </form>)}
         {title(t("Analítica de los últimos 30 días","Analytics for the last 30 days"),
           events.length ? events.map(event=><p key={event.name+event.locale}>{event.name} ({event.locale}): {event.total}</p>) : <p>{t("Sin eventos registrados.","No events recorded.")}</p>)}
       </>}

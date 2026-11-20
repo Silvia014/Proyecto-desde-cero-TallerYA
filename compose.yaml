@@ -1,0 +1,65 @@
+x-api: &api
+  image: tallerya-api:local
+  build:
+    context: .
+    dockerfile: api/Dockerfile
+  environment:
+    TALLERYA_DB: /data/tallerya.sqlite3
+    TALLERYA_JWT_SECRET: ${TALLERYA_JWT_SECRET:?Set a JWT secret of at least 32 characters}
+    TALLERYA_PUBLIC_URL: ${TALLERYA_PUBLIC_URL:-http://localhost:3000}
+    TALLERYA_DEMO: ${TALLERYA_DEMO:-0}
+    TALLERYA_SMTP_HOST: ${TALLERYA_SMTP_HOST:-}
+    TALLERYA_SMTP_USER: ${TALLERYA_SMTP_USER:-}
+    TALLERYA_SMTP_PASSWORD: ${TALLERYA_SMTP_PASSWORD:-}
+    TALLERYA_SMTP_PORT: ${TALLERYA_SMTP_PORT:-465}
+  volumes:
+    - database:/data
+services:
+  api:
+    <<: *api
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
+      interval: 5s
+      timeout: 4s
+      retries: 12
+  jobs:
+    <<: *api
+    command: ["python", "-m", "api.jobs", "--loop"]
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+  web:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+      target: runtime
+    environment:
+      TALLERYA_API: http://api:8000
+      TALLERYA_PUBLIC_URL: ${TALLERYA_PUBLIC_URL:-http://localhost:3000}
+      TALLERYA_DEMO: ${TALLERYA_DEMO:-0}
+      TALLERYA_LEARN_URL: ${TALLERYA_LEARN_URL:-}
+      TALLERYA_YOUTUBE_IDS: ${TALLERYA_YOUTUBE_IDS:-}
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/es').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 4s
+      retries: 12
+  playwright:
+    profiles: ["test"]
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+      target: browser
+    environment:
+      PLAYWRIGHT_BASE_URL: http://web:3000
+    depends_on:
+      web:
+        condition: service_healthy
+volumes:
+  database:

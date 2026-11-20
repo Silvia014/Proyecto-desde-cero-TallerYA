@@ -1,0 +1,41 @@
+name: TallerYA quality
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  compose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      TALLERYA_JWT_SECRET: ci-demo-secret-not-for-production-12345
+      TALLERYA_DEMO: "1"
+    steps:
+      - uses: actions/checkout@v5
+      - name: Validate and start Compose
+        run: |
+          docker compose --profile test config --quiet
+          docker compose up --build --wait
+      - name: FastAPI integration tests
+        run: docker compose exec -T api python -m pytest -q -p no:cacheprovider api/tests
+      - name: Playwright E2E and visual comparisons
+        run: |
+          mkdir -p web/test-results
+          docker compose --profile test run --rm --build \
+            -v "$PWD/web/tests:/app/tests" \
+            -v "$PWD/web/test-results:/app/test-results" \
+            playwright npx playwright test --update-snapshots=missing
+      - name: Upload visual references and test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-linux
+          path: |
+            web/tests/**/*-snapshots/*.png
+            web/test-results/
+          if-no-files-found: ignore
+      - name: Compose diagnostics
+        if: failure()
+        run: docker compose logs

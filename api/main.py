@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Literal
 
 import jwt
+from contextlib import asynccontextmanager
 import pandas as pd
 from fastapi import Body, Depends, FastAPI, HTTPException
 from fastapi.responses import Response
@@ -13,7 +14,24 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pwdlib import PasswordHash
 from pydantic import AwareDatetime, BaseModel, EmailStr, Field, HttpUrl
 
-app = FastAPI(title="TallerYA")
+@asynccontextmanager
+async def lifespan(_):
+    if os.getenv("TALLERYA_DEMO") == "1":
+        from api.demo import seed
+        seed()
+    else:
+        with db() as connection:
+            if connection.execute("SELECT 1 FROM sqlite_master WHERE name='demo_seed'").fetchone():
+                raise RuntimeError("Use a separate database for production")
+    yield
+
+
+app = FastAPI(title="TallerYA", lifespan=lifespan)
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
 passwords = PasswordHash.recommended()
 dummy_password = passwords.hash("unused-placeholder-password")
 bearer = HTTPBearer(auto_error=False)
@@ -33,7 +51,7 @@ CREATE TABLE IF NOT EXISTS workshops (
  id INTEGER PRIMARY KEY, es TEXT NOT NULL, en TEXT NOT NULL,
  starts INTEGER NOT NULL, minutes INTEGER NOT NULL, price INTEGER NOT NULL,
  currency TEXT NOT NULL, capacity INTEGER NOT NULL, published INTEGER NOT NULL,
- teacher INTEGER REFERENCES users(id)
+ teacher INTEGER REFERENCES users(id), venue TEXT NOT NULL DEFAULT ''
 );
 CREATE TABLE IF NOT EXISTS bookings (
  id INTEGER PRIMARY KEY, workshop INTEGER NOT NULL REFERENCES workshops(id),
@@ -71,6 +89,8 @@ def db():
         connection.execute("PRAGMA foreign_keys=ON")
         connection.executescript(schema)
         connection.execute("BEGIN IMMEDIATE")
+        if "venue" not in {column[1] for column in connection.execute("PRAGMA table_info(workshops)")}:
+            connection.execute("ALTER TABLE workshops ADD COLUMN venue TEXT NOT NULL DEFAULT ''")
         yield connection
         connection.commit()
     except BaseException:
@@ -149,6 +169,7 @@ class Workshop(BaseModel):
     capacity: int = Field(gt=0, le=10000)
     published: bool = False
     teacher: int | None = None
+    venue: str = Field(default="", max_length=180)
 
 
 class Sent(BaseModel):
@@ -301,14 +322,14 @@ def editor_values(connection, workshop):
     if workshop.teacher is not None:
         find(connection, "SELECT id FROM users WHERE id=? AND role='teacher' AND deleted=0", (workshop.teacher,))
     return (workshop.es, workshop.en, int(workshop.starts.timestamp()), workshop.minutes,
-            workshop.price, workshop.currency, workshop.capacity, workshop.published, workshop.teacher)
+            workshop.price, workshop.currency, workshop.capacity, workshop.published, workshop.teacher, workshop.venue)
 
 
 @app.post("/admin/workshops", status_code=201)
 def create_workshop(workshop: Workshop, _=Depends(staff)):
     with db() as connection:
         result = connection.execute(
-            "INSERT INTO workshops(es,en,starts,minutes,price,currency,capacity,published,teacher) VALUES(?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO workshops(es,en,starts,minutes,price,currency,capacity,published,teacher,venue) VALUES(?,?,?,?,?,?,?,?,?,?)",
             editor_values(connection, workshop),
         )
         return {"id": result.lastrowid}
@@ -323,7 +344,7 @@ def update_workshop(workshop_id: int, workshop: Workshop, _=Depends(staff)):
         has_active = previous["capacity"] != slots(connection, previous)
         conflict(has_active and previous["starts"] != int(workshop.starts.timestamp()), "active_bookings_prevent_reschedule")
         connection.execute(
-            "UPDATE workshops SET es=?,en=?,starts=?,minutes=?,price=?,currency=?,capacity=?,published=?,teacher=? WHERE id=?",
+            "UPDATE workshops SET es=?,en=?,starts=?,minutes=?,price=?,currency=?,capacity=?,published=?,teacher=?,venue=? WHERE id=?",
             (*editor_values(connection, workshop), workshop_id),
         )
     return {"id": workshop_id}
@@ -530,3 +551,22 @@ def teachers(_=Depends(staff)):
     with db() as connection:
         return [dict(row) for row in connection.execute(
             "SELECT id,name FROM users WHERE role='teacher' AND deleted=0 ORDER BY name")]
+
+
+@app.get("/admin/overview")
+def overview(_=Depends(staff)):
+    with db() as connection:
+        expire(connection, now())
+        popular = [dict(row) for row in connection.execute("""
+            SELECT w.id,w.es,w.en,count(b.id) AS registrations,
+                   sum(CASE WHEN b.status='confirmed' THEN 1 ELSE 0 END) AS confirmed
+            FROM workshops w JOIN bookings b ON w.id=b.workshop
+            GROUP BY w.id ORDER BY registrations DESC, confirmed DESC, w.id ASC LIMIT 8
+        """)]
+        earnings = [dict(row) for row in connection.execute("""
+            SELECT currency,count(*) AS payments,sum(paid) AS paid,sum(refunded) AS refunded,
+                   sum((paid-refunded+2)/5) AS tallerya,
+                   sum(paid-refunded-(paid-refunded+2)/5) AS teacher
+            FROM bookings WHERE paid>0 GROUP BY currency ORDER BY currency
+        """)]
+        return {"popular": popular, "earnings": earnings}

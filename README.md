@@ -53,3 +53,33 @@ Las pruebas de integración de FastAPI usan una base temporal. Cubren concurrenc
 - Las liquidaciones aplican 20 % para TallerYA y 80 % para el formador tras reembolsos, con redondeo por cobro. La política de devolución real está pendiente. El borrado por el dueño anonimiza la cuenta y conserva los registros financieros.
 - La analítica guarda recuentos agregables por evento e idioma tras el consentimiento separado. Los eventos se conservan hasta 90 días con el trabajo programado. El panel muestra los últimos 30 días. Los clics se pueden repetir y los recuentos no equivalen a usuarios únicos.
 - Antes de publicar, configura los dominios, los enlaces de YouTube, el correo real y la política de privacidad definitiva. Configura protección de acceso y límites de tráfico en producción, copias de seguridad y monitorización. El MVP permite gestión manual de WhatsApp y pagos.
+
+## Docker Compose y datos de prueba
+
+El proyecto incluye imágenes para FastAPI, Next.js, el trabajo periódico y Playwright. SQLite se guarda en un volumen y FastAPI queda en la red interna. El sitio se expone en `http://localhost:3000`.
+
+Para levantar una instancia demo separada de los datos reales:
+
+```sh
+export TALLERYA_JWT_SECRET="$(python3 -c 'import secrets; print(secrets.token_urlsafe(48))')"
+export TALLERYA_DEMO=1
+docker compose -p tallerya-demo up --build -d --wait
+```
+
+El modo demo carga talleres y ubicaciones ficticias de Bogotá, inscripciones, pagos y un PDF de muestra. Las cuentas de prueba son `owner@example.com`, `teacher@example.com` y `student@example.com`, todas con contraseña `Demo-TallerYA-5678`. Usa este modo solo en un entorno aislado. La portada demo lleva `noindex` y queda fuera del sitemap. Para el entorno real usa otro proyecto de Compose, `TALLERYA_DEMO=0` y un volumen vacío. Crea al dueño con `docker compose exec api python -m api.owner`.
+
+## Pruebas E2E y visuales
+
+Desde `web/`, instala Chromium con `npx playwright install chromium` y ejecuta `npm run test:e2e` apuntando a una instancia demo en `http://localhost:3000`. Puedes cambiar la URL con `PLAYWRIGHT_BASE_URL`. Las pruebas comprueban español e inglés, el catálogo con ubicaciones, el backoffice y la descarga del PDF. Las capturas comparan escritorio, móvil y la tabla de ganancias.
+
+Playwright mantiene las referencias visuales por sistema operativo. La primera vez que las generes en Linux, revísalas antes de guardarlas. Con la instancia demo iniciada:
+
+```sh
+docker compose -p tallerya-demo --profile test build playwright
+docker compose -p tallerya-demo --profile test run --rm \
+  -v "$PWD/web/tests:/app/tests" playwright npx playwright test --update-snapshots
+docker compose -p tallerya-demo --profile test run --rm \
+  -v "$PWD/web/tests:/app/tests" playwright
+```
+
+Para cambios de producto, añade primero los casos de Playwright en `web/tests/`, comprueba que fallen por la conducta que falta y luego implementa el cambio. Si cambia el diseño, revisa la diferencia visual antes de actualizar una referencia.
