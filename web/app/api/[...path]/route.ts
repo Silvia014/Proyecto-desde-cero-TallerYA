@@ -11,7 +11,14 @@ const routes = [
 async function proxy(request: NextRequest, {params}: {params: Promise<{path:string[]}>}) {
   const path = (await params).path.join("/");
   const write = request.method !== "GET";
-  if (write && request.headers.get("origin") !== new URL(request.url).origin) {
+  const origin = request.headers.get("origin");
+  const host = request.headers.get("host");
+  const publicOrigins = [process.env.TALLERYA_PUBLIC_URL,process.env.TALLERYA_LEARN_URL,process.env.TALLERYA_TEST_ORIGIN]
+    .filter((value): value is string => Boolean(value))
+    .map(value=>new URL(value).origin);
+  // Standalone Next.js can normalize request.url to its bind address inside Docker.
+  const incomingOrigin = host ? request.nextUrl.protocol + "//" + host : null;
+  if (write && (!origin || ![request.nextUrl.origin,incomingOrigin,...publicOrigins].includes(origin))) {
     return NextResponse.json({detail:"origin_not_allowed"}, {status:403});
   }
   if (path === "logout" && request.method === "POST") {

@@ -12,6 +12,7 @@ jobs:
     env:
       TALLERYA_JWT_SECRET: ci-demo-secret-not-for-production-12345
       TALLERYA_DEMO: "1"
+      TALLERYA_TEST_ORIGIN: http://web:3000
     steps:
       - uses: actions/checkout@v5
       - name: Validate and start Compose
@@ -26,7 +27,7 @@ jobs:
           docker compose --profile test run --rm --build \
             -v "$PWD/web/tests:/app/tests" \
             -v "$PWD/web/test-results:/app/test-results" \
-            playwright npx playwright test --update-snapshots=missing
+            playwright npx playwright test --update-snapshots
       - name: Upload visual references and test results
         if: always()
         uses: actions/upload-artifact@v4

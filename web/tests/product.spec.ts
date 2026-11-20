@@ -6,7 +6,8 @@ test("Spanish and English catalogue, venue and public SEO",async({page})=>{
   await expect(page.getByRole("heading",{level:1})).toContainText("Bogotá");
   await expect(page.getByText("Casa Arcilla · Chapinero").first()).toBeVisible();
   await expect(page.getByText("Datos de prueba").first()).toBeVisible();
-  await expect(page.locator("script[type='application/ld+json']")).toContainText("WebSite");
+  const schema=await page.locator("script[type='application/ld+json']").evaluate(node=>JSON.parse(node.textContent ?? "{}"));
+  expect(schema["@graph"][0]["@type"]).toBe("WebSite");
   await page.getByRole("link",{name:"English",exact:true}).click();
   await expect(page.locator("html")).toHaveAttribute("lang","en");
   await expect(page.getByRole("heading",{name:"Upcoming workshops"})).toBeVisible();
@@ -48,6 +49,9 @@ for (const viewport of [{width:1440,height:1000},{width:390,height:844}]){
     await page.setViewportSize(viewport);
     await page.goto("/es");
     await expect(page.getByText("Casa Arcilla · Chapinero").first()).toBeVisible();
-    await expect(page).toHaveScreenshot(`landing-${viewport.width}.png`,{animations:"disabled",fullPage:true,mask:[page.locator("time")]});
+    await page.locator("time").evaluateAll(nodes=>{
+      for(const node of nodes) node.textContent="12 nov 2026, 12:00";
+    });
+    await expect(page).toHaveScreenshot(`landing-${viewport.width}.png`,{animations:"disabled",fullPage:true});
   });
 }
