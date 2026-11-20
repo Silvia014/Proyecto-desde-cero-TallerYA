@@ -27,7 +27,7 @@ jobs:
           docker compose --profile test run --rm --build \
             -v "$PWD/web/tests:/app/tests" \
             -v "$PWD/web/test-results:/app/test-results" \
-            playwright npx playwright test --update-snapshots
+            playwright npx playwright test --update-snapshots=none
       - name: Upload visual references and test results
         if: always()
         uses: actions/upload-artifact@v4
