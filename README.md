@@ -117,3 +117,7 @@ The Next.js project uses `web` as its root. Deploy the same repository in a seco
 Once the API project answers `/health` and `/workshops`, set `TALLERYA_API` on the Next.js project to the API deployment's HTTPS origin, without a trailing slash. Set `TALLERYA_PUBLIC_URL` on both projects to the public Next.js URL and redeploy. Check the frontend's `/api/workshops` before trying to book from Learn. Keep database credentials and the JWT secret on the API project only.
 
 Run `python -m api.jobs` on a scheduled worker for queued email and periodic expiry. The booking API also checks expiry when reading and changing reservations.
+
+## Redesign preview
+
+Deploy the `codex/tallerya-redesign` branch with the existing Vercel root directory (`web`) and open `/redesign`. This standalone bilingual design preview uses six sample workshops and keeps production Learn links. The existing `/es` and `/en` routes continue serving the live catalogue.
