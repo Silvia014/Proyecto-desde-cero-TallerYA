@@ -21,7 +21,7 @@ export default async function Landing({params}:Params){
   let workshops: Workshop[]=[];
   let unavailable=false;
   try {
-    const response=await fetch((process.env.TALLERYA_API ?? "http://127.0.0.1:8000")+"/workshops",{cache:"no-store"});
+    const response=await fetch((process.env.TALLERYA_API || "http://127.0.0.1:8000").replace(/\/+$/, "")+"/workshops",{cache:"no-store"});
     if(!response.ok) throw new Error("Catalogue offline");
     workshops=await response.json();
   }catch{unavailable=true;}

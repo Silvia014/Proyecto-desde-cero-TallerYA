@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const cookie = "tallerya_session";
-const backend = process.env.TALLERYA_API ?? "http://127.0.0.1:8000";
+const backend = (process.env.TALLERYA_API || "http://127.0.0.1:8000").replace(/\/+$/, "");
 const routes = [
   /^register$/, /^login$/, /^telemetry$/, /^me(?:\/preferences|\/bookings(?:\/\d+\/(?:cancel|certificate))?)?$/,
   /^workshops(?:\/\d+(?:\/(?:book|interest))?)?$/,
