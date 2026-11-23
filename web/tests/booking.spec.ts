@@ -1,0 +1,29 @@
+import {expect,test} from "@playwright/test";
+import {randomUUID} from "node:crypto";
+
+test("a new club member reserves a real place through the bilingual catalogue", async ({page}) => {
+  const email = `e2e-${randomUUID()}@example.com`;
+  await page.goto("/en");
+  const edition = page.getByRole("article").filter({has:page.getByRole("heading",{name:"Street photography",exact:true})});
+  const previous = Number((await edition.innerText()).match(/(\d+) places/)?.[1]);
+  expect(previous).toBeGreaterThan(0);
+  await edition.getByRole("link",{name:"Book",exact:true}).click();
+  await page.getByRole("button",{name:"Create account",exact:true}).click();
+  await page.getByLabel("Name",{exact:true}).fill("Browser Test");
+  await page.getByLabel("Phone",{exact:true}).fill("+573001234567");
+  await page.getByLabel("Email",{exact:true}).fill(email);
+  await page.getByLabel(/Password/).fill("Browser-test-password-5678");
+  await page.getByRole("checkbox",{name:/I accept the/}).check();
+  await page.getByRole("button",{name:"Create account",exact:true}).click();
+  await page.getByRole("button",{name:"Hold one place",exact:true}).click();
+  await expect(page.getByRole("status")).toContainText("Place held");
+  await expect(page.getByText(/Awaiting payment instructions/)).toBeVisible();
+  await page.goto("/en");
+  await expect(edition).toContainText(`${previous-1} places`);
+  await page.goto("/en/learn");
+  page.once("dialog", dialog=>dialog.accept());
+  await page.getByRole("button",{name:"Cancel booking",exact:true}).click();
+  await expect(page.getByText(/Cancelled/)).toBeVisible();
+  await page.goto("/en");
+  await expect(edition).toContainText(`${previous} places`);
+});

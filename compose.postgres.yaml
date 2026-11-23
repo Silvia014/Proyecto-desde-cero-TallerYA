@@ -1,0 +1,27 @@
+# Local PostgreSQL matching the SQL schema used by Supabase.
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: tallerya
+      POSTGRES_USER: tallerya
+      POSTGRES_PASSWORD: ${TALLERYA_LOCAL_DB_PASSWORD:?Set a local PostgreSQL password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./supabase/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U tallerya -d tallerya"]
+      interval: 3s
+      timeout: 3s
+      retries: 15
+  api:
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      TALLERYA_DATABASE_URL: postgresql://tallerya:${TALLERYA_LOCAL_DB_PASSWORD}@postgres:5432/tallerya
+  jobs:
+    environment:
+      TALLERYA_DATABASE_URL: postgresql://tallerya:${TALLERYA_LOCAL_DB_PASSWORD}@postgres:5432/tallerya
+volumes:
+  postgres_data:
