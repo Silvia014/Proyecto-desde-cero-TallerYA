@@ -54,12 +54,57 @@ export function HeroPoster(){
   </div>;
 }
 
+export function WorkshopGallery({locale}:{locale:Locale}) {
+  const gallery=useRef<HTMLElement>(null);
+  useEffect(()=>{
+    const motion=matchMedia("(prefers-reduced-motion: reduce)");
+    let frame=0;
+    function update(){
+      cancelAnimationFrame(frame);
+      frame=requestAnimationFrame(()=>{
+        const element=gallery.current;
+        if(!element) return;
+        const offset=(window.innerHeight/2-element.getBoundingClientRect().top)*.065;
+        element.style.setProperty("--gallery-shift",motion.matches?"0px":Math.max(-22,Math.min(22,offset))+"px");
+      });
+    }
+    window.addEventListener("scroll",update,{passive:true});
+    window.addEventListener("resize",update);
+    motion.addEventListener("change",update);
+    update();
+    return ()=>{
+      window.removeEventListener("scroll",update);
+      window.removeEventListener("resize",update);
+      motion.removeEventListener("change",update);
+      cancelAnimationFrame(frame);
+    };
+  },[]);
+  const captions = [
+    ["rug","Manos tejiendo una alfombra","Hands tufting a rug"],
+    ["clay","Una taza de arcilla en proceso","A clay cup taking shape"],
+    ["shoes","Un zapato confeccionado a mano","A shoe being stitched by hand"],
+  ];
+  return <section ref={gallery} id="galeria" aria-labelledby="gallery-title" className="border-t border-sand py-10">
+    <h2 id="gallery-title" className="subhead">{locale==="es"?"Galería de talleres":"Workshop gallery"}</h2>
+    <p className="mb-5">{locale==="es"?"Imágenes generadas para ilustrar las actividades.":"Generated images illustrating the activities."}</p>
+    <div className="grid gap-4 sm:grid-cols-3">
+      {captions.map(([id,es,en])=><figure key={id}>
+        <div className="gallery-photo">
+          <img src={`/workshops/${id}.jpg`} alt={locale==="es"?es:en} width={724} height={724}/>
+        </div>
+        <figcaption className="mt-2">{locale==="es"?es:en}</figcaption>
+      </figure>)}
+    </div>
+  </section>;
+}
+
 export function Catalog({workshops,locale,learn}:{workshops:Workshop[];locale:Locale;learn:string}){
   const trackRef=useRef<HTMLDivElement>(null);
   function move(direction:number) {
     const track=trackRef.current;
     if(track) track.scrollBy({left:direction*track.clientWidth,behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"instant":"smooth"});
   }
+  const timeFormat=new Intl.DateTimeFormat(locale==="es"?"es-CO":"en",{timeStyle:"short",timeZone:"America/Bogota"});
   if(!workshops.length) return <p>{locale==="es"?"Aún no hay talleres publicados.":"No workshops have been published yet."}</p>;
   return <>
     {workshops.length>1 && <div className="mb-4 flex gap-2">
@@ -67,12 +112,14 @@ export function Catalog({workshops,locale,learn}:{workshops:Workshop[];locale:Lo
       <button className="button" onClick={()=>move(1)}>{locale==="es"?"Siguiente":"Next"}</button>
     </div>}
     <div ref={trackRef} tabIndex={0} className="grid snap-x grid-flow-col auto-cols-[min(100%,19rem)] gap-4 overflow-x-auto pb-4">
-      {workshops.map(workshop=><article key={workshop.id} id={`taller-${workshop.id}`} className="panel snap-start">
+      {workshops.map(workshop=><article key={workshop.id} id={`taller-${workshop.id}`} className="panel flex flex-col items-start snap-start">
         <h3 className="text-xl font-bold">{workshop[locale]}</h3>
-        <p><time dateTime={new Date(workshop.starts*1000).toISOString()}>{dateOf(workshop.starts,locale)}</time> · {workshop.minutes/60} h</p>
+        <p><time dateTime={new Date(workshop.starts*1000).toISOString()}>{dateOf(workshop.starts,locale)}</time> – <time dateTime={new Date((workshop.starts+workshop.minutes*60)*1000).toISOString()}>{timeFormat.format((workshop.starts+workshop.minutes*60)*1000)}</time></p>
+        <p>{locale==="es"?"Duración estimada":"Estimated duration"} · {workshop.minutes/60} h</p>
         {workshop.venue && <p>{workshop.venue}</p>}
         <p className="mb-4">{money(workshop.price,workshop.currency,locale)} · {workshop.available} {locale==="es"?"plazas":"places"}</p>
-        <a className="button" onClick={()=>track("booking_open",locale)} href={`${learn}?taller=${workshop.id}`}>
+        {workshop.project && <p className="mb-4"><strong>{locale==="es"?"Crearás":"You’ll make"}</strong> · {workshop.project[locale]}</p>}
+        <a className="button mt-auto" onClick={()=>track("booking_open",locale)} href={`${learn}?taller=${workshop.id}`}>
           {workshop.available ? (locale==="es"?"Reservar":"Book") : (locale==="es"?"Avisarme":"Notify me")}
         </a>
       </article>)}

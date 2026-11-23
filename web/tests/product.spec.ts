@@ -50,8 +50,9 @@ for (const viewport of [{width:1440,height:1000},{width:390,height:844}]){
     await page.goto("/es");
     await expect(page.getByText("Casa Arcilla · Chapinero").first()).toBeVisible();
     await page.locator("time").evaluateAll(nodes=>{
-      for(const node of nodes) node.textContent="12 nov 2026, 12:00";
+      nodes.forEach((node,index)=>{node.textContent=index%2===0?"12 nov 2026, 12:00":"15:00";});
     });
+    await page.locator("#galeria img").evaluateAll(images=>Promise.all(images.map(image=>(image as HTMLImageElement).decode())));
     await expect(page).toHaveScreenshot(`landing-${viewport.width}.png`,{animations:"disabled",fullPage:true});
   });
 }
@@ -73,4 +74,24 @@ test("teachers use Learn to see their assigned courses without owner controls", 
   await expect(page.getByRole("heading",{name:"Workshop schedule"})).toBeVisible();
   await expect(page.getByRole("heading",{name:"Ceramics by hand"})).toBeVisible();
   await expect(page.getByRole("heading",{name:"Users",exact:true})).toHaveCount(0);
+});
+
+test("the demo explains workshop projects, group visits and the illustrative gallery in both languages", async ({page}) => {
+  await page.goto("/en");
+  for (const title of ["Rug making", "Personal development", "Clay hand-building", "Handcrafted shoes", "Handmade cups"]) {
+    const card = page.getByRole("article").filter({has: page.getByRole("heading",{name:title,exact:true})});
+    await expect(card).toContainText("20 places");
+    await expect(card).toContainText("COP");
+    await expect(card.locator("time")).toHaveCount(2);
+    await expect(card).toContainText("You’ll make");
+  }
+  await expect(page.getByRole("heading",{name:"What to expect"})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Come with a group"})).toBeVisible();
+  const gallery = page.getByRole("region",{name:"Workshop gallery"});
+  await gallery.scrollIntoViewIfNeeded();
+  await expect(gallery.getByRole("img")).toHaveCount(3);
+  await expect.poll(()=>gallery.getByRole("img").first().evaluate(img=>(img as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+  await page.getByRole("link",{name:"Español",exact:true}).click();
+  await expect(page.getByRole("heading",{name:"Qué esperar"})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Creación de alfombras"})).toHaveCount(1);
 });
