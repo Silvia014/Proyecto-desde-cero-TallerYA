@@ -22,13 +22,18 @@ export default async function Landing({params}:Params){
   const t=(es:string,en:string)=>locale==="es"?es:en;
   let workshops: Workshop[]=[];
   let unavailable=false;
+  const useHostedPreview=process.env.VERCEL_ENV==="preview" && !process.env.TALLERYA_API;
+  const api=process.env.TALLERYA_API ||
+    (useHostedPreview?"https://tallerya-api.vercel.app":"http://127.0.0.1:8000");
   try {
-    const response=await fetch((process.env.TALLERYA_API || "http://127.0.0.1:8000").replace(/\/+$/, "")+"/workshops",{cache:"no-store"});
+    const response=await fetch(api.replace(/\/+$/,"")+"/workshops",{cache:"no-store"});
     if(!response.ok) throw new Error("Catalogue offline");
     workshops=await response.json();
   }catch{unavailable=true;}
   const videos=(process.env.TALLERYA_YOUTUBE_IDS ?? "").split(",").filter(id=>/^[\w-]{11}$/.test(id));
-  const learn=(process.env.TALLERYA_LEARN_URL ?? "")+"/"+locale+"/learn";
+  const learnOrigin=process.env.TALLERYA_LEARN_URL ??
+    (useHostedPreview?"https://web-seven-lake-630ukdfron.vercel.app":"");
+  const learn=learnOrigin.replace(/\/+$/,"")+"/"+locale+"/learn";
   const isDemo=process.env.TALLERYA_DEMO==="1";
   const base=process.env.TALLERYA_PUBLIC_URL ?? "http://localhost:3000";
   const structured={
