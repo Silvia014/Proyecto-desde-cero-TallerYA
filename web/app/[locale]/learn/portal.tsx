@@ -145,7 +145,7 @@ export default function Portal({locale,selected}:{locale:Locale;selected?:number
         <a href={learnPath("es")} lang="es">Español</a><a href={learnPath("en")} lang="en">English</a>
       </nav>
     </header>
-    {message && <p role="status" className="mb-4 rounded bg-lime-200 p-3">{message}</p>}
+    {message && <p role="status" className="mb-4 rounded bg-peach p-3">{message}</p>}
     {loading ? <p>{t("Cargando…","Loading…")}</p> : !profile ? title(register?t("Únete al Club TallerYA","Join Club TallerYA"):t("Iniciar sesión","Sign in"),
       <form className="max-w-md space-y-4" onSubmit={form(authenticate)}>
         {register && <><Field name="name" label={t("Nombre","Name")}/><Field name="phone" type="tel" label={t("Teléfono","Phone")}/></>}
@@ -172,7 +172,7 @@ export default function Portal({locale,selected}:{locale:Locale;selected?:number
             setMessage(profile.notices?t("Te avisaremos por correo si se libera una plaza.","We’ll email you if a place opens."):t("Interés guardado. Activa los avisos si quieres recibir un correo.","Interest saved. Enable notifications to receive email."));
           })}
         </>)}
-        {title(t("Mis reservas y certificados","My bookings and certificates"),bookings.map(booking=><article key={booking.id} className="border-t border-slate-200 py-3">
+        {title(t("Mis reservas y certificados","My bookings and certificates"),bookings.map(booking=><article key={booking.id} className="border-t border-sand/60 py-3">
           <h3 className="font-bold">{booking[locale]}</h3><p>{status[booking.status]} · {dateOf(booking.starts,locale)}</p>
           {booking.status==="payment" && booking.deadline && <p>{t("Paga antes de","Pay before")} {dateOf(booking.deadline,locale)}</p>}
           {booking.has_certificate && <a className="button mt-2" href={`/api/me/bookings/${booking.id}/certificate`}>{t("Descargar certificado PDF","Download PDF certificate")}</a>}
@@ -188,7 +188,7 @@ export default function Portal({locale,selected}:{locale:Locale;selected?:number
             await request("me/preferences","PUT",{notices});setProfile({...profile,notices});
           });}}/> {t("Recibir novedades y avisos de plazas","Receive news and availability notices")}</label>)}
       </>}
-      {(isStaff || profile.role==="teacher") && title(t("Agenda de cursos","Workshop schedule"),agenda.map(item=><article key={item.id} className="border-t border-slate-200 py-3">
+      {(isStaff || profile.role==="teacher") && title(t("Agenda de cursos","Workshop schedule"),agenda.map(item=><article key={item.id} className="border-t border-sand/60 py-3">
         <h3 className="font-bold">{item[locale]}</h3><p>{dateOf(item.starts,locale)} · {item.available}/{item.capacity} {t("plazas libres","places available")}</p>
         {item.counts && <p>{t("Pendientes","Pending")}: {(item.counts.hold??0)+(item.counts.payment??0)} · {t("Confirmadas","Confirmed")}: {item.counts.confirmed??0}</p>}
         {isStaff && <div className="mt-2 flex flex-wrap gap-2">
@@ -200,13 +200,13 @@ export default function Portal({locale,selected}:{locale:Locale;selected?:number
         {overview && title(t("Talleres populares","Popular workshops"),<div className="overflow-x-auto">
           <table aria-label={t("Talleres populares","Popular workshops")} className="w-full text-left">
             <thead><tr><th>{t("Taller","Workshop")}</th><th>{t("Inscripciones","Registrations")}</th><th>{t("Confirmadas","Confirmed")}</th></tr></thead>
-            <tbody>{overview.popular.map(row=><tr key={row.id} className="border-t border-slate-200"><th scope="row" className="py-2">{row[locale]}</th><td>{row.registrations}</td><td>{row.confirmed}</td></tr>)}</tbody>
+            <tbody>{overview.popular.map(row=><tr key={row.id} className="border-t border-sand/60"><th scope="row" className="py-2">{row[locale]}</th><td>{row.registrations}</td><td>{row.confirmed}</td></tr>)}</tbody>
           </table></div>)}
         {overview && title(t("Panel de ganancias","Earnings dashboard"),<>
           <p>{t("Reparto antes de impuestos y gastos","Split before taxes and expenses")}</p>
           <div className="overflow-x-auto"><table aria-label={t("Panel de ganancias","Earnings dashboard")} className="w-full min-w-[35rem] text-left">
             <thead><tr><th>{t("Moneda","Currency")}</th><th>{t("Cobrado","Paid")}</th><th>{t("Reembolsado","Refunded")}</th><th>TallerYA · 20%</th><th>{t("Formador · 80%","Instructor · 80%")}</th></tr></thead>
-            <tbody>{overview.earnings.map(row=><tr key={row.currency} className="border-t border-slate-200"><th scope="row" className="py-2">{row.currency}</th>
+            <tbody>{overview.earnings.map(row=><tr key={row.currency} className="border-t border-sand/60"><th scope="row" className="py-2">{row.currency}</th>
               {[row.paid,row.refunded,row.tallerya,row.teacher].map((amount,index)=><td key={index}>{money(amount,row.currency,locale)}</td>)}</tr>)}</tbody>
           </table></div>
         </>)}
@@ -231,7 +231,7 @@ export default function Portal({locale,selected}:{locale:Locale;selected?:number
             <input type="search" value={registrationSearch} onChange={event=>setRegistrationSearch(event.target.value)}/>
           </label>
           {!registrations.length && <p>{t("No hay inscripciones que coincidan.","No matching registrations.")}</p>}
-          {registrations.map(booking=><article key={booking.id} className="space-y-2 border-t border-slate-200 py-3">
+          {registrations.map(booking=><article key={booking.id} className="space-y-2 border-t border-sand/60 py-3">
           <h3 className="font-bold">#{booking.id} · {booking[locale]} · {status[booking.status]}</h3>
           {booking.contact && <p>{booking.contact.name} · {booking.contact.phone} · {booking.contact.email}</p>}
           {booking.status==="hold" && <form className="flex flex-wrap items-end gap-2" onSubmit={form(async data=>{
@@ -261,7 +261,7 @@ export default function Portal({locale,selected}:{locale:Locale;selected?:number
         {title(t("Analítica de los últimos 30 días","Analytics for the last 30 days"),
           events.length ? events.map(event=><p key={event.name+event.locale}>{event.name} ({event.locale}): {event.total}</p>) : <p>{t("Sin eventos registrados.","No events recorded.")}</p>)}
       </>}
-      {profile.role==="owner" && title(t("Usuarios","Users"),users.filter(user=>user.role!=="owner").map(user=><article key={user.id} className="space-y-2 border-t border-slate-200 py-3">
+      {profile.role==="owner" && title(t("Usuarios","Users"),users.filter(user=>user.role!=="owner").map(user=><article key={user.id} className="space-y-2 border-t border-sand/60 py-3">
         <h3 className="font-bold">{user.name} · {user.email}</h3>
         <form className="flex flex-wrap items-end gap-2" onSubmit={form(async data=>{
           await request(`admin/users/${user.id}/role`,"PUT",{role:data.get("role")});await refresh(profile);

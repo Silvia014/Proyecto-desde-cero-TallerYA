@@ -55,3 +55,22 @@ for (const viewport of [{width:1440,height:1000},{width:390,height:844}]){
     await expect(page).toHaveScreenshot(`landing-${viewport.width}.png`,{animations:"disabled",fullPage:true});
   });
 }
+
+test("the landing and Learn share the TallerYA palette", async ({page}) => {
+  await page.goto("/en");
+  const hero = page.getByRole("heading", {level:1}).locator("xpath=ancestor::section[1]");
+  await expect(hero).toHaveCSS("background-color", "rgb(102, 51, 0)");
+  await expect(hero.getByRole("link", {name:"Browse workshops"})).toHaveCSS("background-color", "rgb(255, 204, 153)");
+  await page.goto("/en/learn");
+  await expect(page.getByRole("button", {name:"Sign in",exact:true})).toHaveCSS("background-color", "rgb(102, 51, 0)");
+});
+
+test("teachers use Learn to see their assigned courses without owner controls", async ({page}) => {
+  await page.goto("/en/learn");
+  await page.getByLabel("Email", {exact:true}).fill("teacher@example.com");
+  await page.getByLabel(/Password/).fill("Demo-TallerYA-5678");
+  await page.getByRole("button",{name:"Sign in",exact:true}).click();
+  await expect(page.getByRole("heading",{name:"Workshop schedule"})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Ceramics by hand"})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Users",exact:true})).toHaveCount(0);
+});

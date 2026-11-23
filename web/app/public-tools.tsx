@@ -49,8 +49,8 @@ export function HeroPoster(){
     scroll();
     return ()=>{window.removeEventListener("scroll",scroll);reduced.removeEventListener("change",scroll);};
   },[]);
-  return <div aria-hidden="true" className="grid min-h-56 place-items-center overflow-hidden bg-lime-200">
-    <div ref={ref} className="text-7xl leading-[.8] font-black tracking-tighter text-indigo-800 sm:text-9xl">Taller<br/>YA.</div>
+  return <div aria-hidden="true" className="grid min-h-56 place-items-center overflow-hidden bg-peach">
+    <div ref={ref} className="text-7xl leading-[.8] font-black tracking-tighter text-cocoa sm:text-9xl">Taller<br/>YA.</div>
   </div>;
 }
 
