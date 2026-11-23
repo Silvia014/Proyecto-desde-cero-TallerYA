@@ -173,7 +173,7 @@
   renderList();renderDetail();
  }
  find.addEventListener('submit',event=>{event.preventDefault();renderList();});
- find.addEventListener('change',renderList);
+ find.querySelectorAll('select').forEach(select=>select.addEventListener('change',renderList));
  find.addEventListener('reset',()=>queueMicrotask(renderList));
  $('#ty-query').addEventListener('input',renderList);
  $('#ty-lang').addEventListener('change',event=>{language=event.target.value;render();});
