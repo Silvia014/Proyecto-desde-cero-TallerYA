@@ -7,7 +7,8 @@ test("a new club member reserves a real place through the bilingual catalogue", 
   const edition = page.getByRole("article").filter({has:page.getByRole("heading",{name:"Street photography",exact:true})});
   const previous = Number((await edition.innerText()).match(/(\d+) places/)?.[1]);
   expect(previous).toBeGreaterThan(0);
-  await edition.getByRole("link",{name:"Book",exact:true}).click();
+  await edition.getByRole("button",{name:"View workshop",exact:true}).click();
+  await page.getByRole("dialog").getByRole("link",{name:"Book",exact:true}).click();
   await page.getByRole("button",{name:"Create account",exact:true}).click();
   await page.getByLabel("Name",{exact:true}).fill("Browser Test");
   await page.getByLabel("Phone",{exact:true}).fill("+573001234567");

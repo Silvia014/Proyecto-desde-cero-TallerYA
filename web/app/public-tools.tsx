@@ -1,8 +1,7 @@
 "use client";
 
 import {useEffect, useRef, useState} from "react";
-import type {Locale, Workshop} from "./shared";
-import {dateOf, money} from "./shared";
+import type {Locale} from "./shared";
 
 const consentKey = "tallerya-analytics";
 
@@ -38,19 +37,19 @@ export function AnalyticsChoice({locale}:{locale:Locale}) {
 }
 
 export function HeroPoster(){
-  const ref=useRef<HTMLDivElement>(null);
+  const ref=useRef<HTMLImageElement>(null);
   useEffect(()=>{
     const reduced=window.matchMedia("(prefers-reduced-motion: reduce)");
     function scroll(){
-      ref.current?.style.setProperty("transform", reduced.matches ? "" : `translateY(${Math.min(window.scrollY*.15,45)}px) rotate(-8deg)`);
+      ref.current?.style.setProperty("--shift", reduced.matches ? "0px" : Math.min(window.scrollY*.09,18)+"px");
     }
     window.addEventListener("scroll",scroll,{passive:true});
     reduced.addEventListener("change",scroll);
     scroll();
     return ()=>{window.removeEventListener("scroll",scroll);reduced.removeEventListener("change",scroll);};
   },[]);
-  return <div aria-hidden="true" className="grid min-h-56 place-items-center overflow-hidden bg-peach">
-    <div ref={ref} className="text-7xl leading-[.8] font-black tracking-tighter text-cocoa sm:text-9xl">Taller<br/>YA.</div>
+  return <div className="hero-img">
+    <img ref={ref} src="/redesign/images/rug.webp" alt="" fetchPriority="high"/>
   </div>;
 }
 
@@ -98,37 +97,8 @@ export function WorkshopGallery({locale}:{locale:Locale}) {
   </section>;
 }
 
-export function Catalog({workshops,locale,learn}:{workshops:Workshop[];locale:Locale;learn:string}){
-  const trackRef=useRef<HTMLDivElement>(null);
-  function move(direction:number) {
-    const track=trackRef.current;
-    if(track) track.scrollBy({left:direction*track.clientWidth,behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"instant":"smooth"});
-  }
-  const timeFormat=new Intl.DateTimeFormat(locale==="es"?"es-CO":"en",{timeStyle:"short",timeZone:"America/Bogota"});
-  if(!workshops.length) return <p>{locale==="es"?"Aún no hay talleres publicados.":"No workshops have been published yet."}</p>;
-  return <>
-    {workshops.length>1 && <div className="mb-4 flex gap-2">
-      <button className="button" onClick={()=>move(-1)}>{locale==="es"?"Anterior":"Previous"}</button>
-      <button className="button" onClick={()=>move(1)}>{locale==="es"?"Siguiente":"Next"}</button>
-    </div>}
-    <div ref={trackRef} tabIndex={0} className="grid snap-x grid-flow-col auto-cols-[min(100%,19rem)] gap-4 overflow-x-auto pb-4">
-      {workshops.map(workshop=><article key={workshop.id} id={`taller-${workshop.id}`} className="panel flex flex-col items-start snap-start">
-        <h3 className="text-xl font-bold">{workshop[locale]}</h3>
-        <p><time dateTime={new Date(workshop.starts*1000).toISOString()}>{dateOf(workshop.starts,locale)}</time> – <time dateTime={new Date((workshop.starts+workshop.minutes*60)*1000).toISOString()}>{timeFormat.format((workshop.starts+workshop.minutes*60)*1000)}</time></p>
-        <p>{locale==="es"?"Duración estimada":"Estimated duration"} · {workshop.minutes/60} h</p>
-        {workshop.venue && <p>{workshop.venue}</p>}
-        <p className="mb-4">{money(workshop.price,workshop.currency,locale)} · {workshop.available} {locale==="es"?"plazas":"places"}</p>
-        {workshop.project && <p className="mb-4"><strong>{locale==="es"?"Crearás":"You’ll make"}</strong> · {workshop.project[locale]}</p>}
-        <a className="button mt-auto" onClick={()=>track("booking_open",locale)} href={`${learn}?taller=${workshop.id}`}>
-          {workshop.available ? (locale==="es"?"Reservar":"Book") : (locale==="es"?"Avisarme":"Notify me")}
-        </a>
-      </article>)}
-    </div>
-  </>;
-}
-
-export function TrackedLink({name,locale,href,children}:{name:string;locale:Locale;href:string;children:React.ReactNode}){
-  return <a className="button" href={href} onClick={()=>track(name,locale)}>{children}</a>;
+export function TrackedLink({name,locale,href,children,className="button"}:{name:string;locale:Locale;href:string;children:React.ReactNode;className?:string}){
+  return <a className={className} href={href} onClick={()=>track(name,locale)}>{children}</a>;
 }
 
 export function LanguageSelector({locale}:{locale:Locale}) {

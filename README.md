@@ -120,4 +120,4 @@ Run `python -m api.jobs` on a scheduled worker for queued email and periodic exp
 
 ## Redesign preview
 
-Deploy the `codex/tallerya-redesign` branch with the existing Vercel root directory (`web`) and open `/redesign`. This standalone bilingual design preview uses six sample workshops and keeps production Learn links. The existing `/es` and `/en` routes continue serving the live catalogue.
+Deploy the `codex/tallerya-redesign` branch with the existing Vercel root directory (`web`) and open the deployment URL. The default homepage (`/`, `/es`, and `/en`) now uses the redesign with current catalogue data and Learn booking links. The original isolated design preview remains available at `/redesign`.

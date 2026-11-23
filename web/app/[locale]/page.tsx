@@ -1,6 +1,8 @@
 import {notFound} from "next/navigation";
 import type {Metadata} from "next";
-import {AnalyticsChoice,Catalog,HeroPoster,TrackedLink,WorkshopGallery,LanguageSelector} from "../public-tools";
+import {AnalyticsChoice,HeroPoster,TrackedLink,WorkshopGallery,LanguageSelector} from "../public-tools";
+import {Catalog} from "../catalog";
+import "../marketplace.css";
 import type {Workshop} from "../shared";
 
 type Params = {params:Promise<{locale:string}>};
@@ -45,30 +47,41 @@ export default async function Landing({params}:Params){
       })) : []),
     ],
   };
-  return <div className="shell">
+  const picks=workshops.filter(workshop=>["Clay hand-building","Handmade cups"].includes(workshop.en));
+  return <div className="marketplace">
     <script type="application/ld+json" dangerouslySetInnerHTML={{__html:JSON.stringify(structured).replace(/</g,"\\u003c")}}/>
-    <header className="flex flex-wrap items-center justify-between gap-4 border-b border-sand py-5">
-      <a className="text-2xl font-black tracking-tight" href={`/${locale}`}>Taller<span className="text-cocoa">YA</span></a>
-      <nav className="flex flex-wrap items-center gap-4">
-        <a href="#talleres">{t("Talleres","Workshops")}</a><a href="#como-funciona">{t("Cómo funciona","How it works")}</a><a href="#que-esperar">{t("Qué esperar","What to expect")}</a><a href="#galeria">{t("Galería","Gallery")}</a><a href="#grabaciones">{t("Grabaciones","Recordings")}</a>
+    <header><div className="wrap mast">
+      <a className="brand" aria-label="TallerYA" href={`/${locale}`}>Taller<span>YA</span></a>
+      <nav>
+        <a href="#talleres">{t("Talleres","Workshops")}</a>
+        {!!picks.length && <a href="#para-empezar">{t("Para empezar","Start here")}</a>}
+        <a href="#que-esperar">{t("Qué esperar","What to expect")}</a>
         <LanguageSelector locale={locale}/>
-        <TrackedLink name="learn_open" locale={locale} href={learn}>Learn TallerYA</TrackedLink>
+        <TrackedLink name="learn_open" locale={locale} href={learn} className="cta">Learn TallerYA</TrackedLink>
       </nav>
-    </header>
-    <main>
-      {isDemo && <p className="mt-4 rounded bg-peach/50 px-4 py-2 text-sm font-semibold">{t("Datos de prueba · Talleres y lugares ficticios","Demo data · Fictional workshops and venues")}</p>}
-      <section className="hero-grid my-6 grid gap-7 rounded-2xl bg-cocoa p-6 text-white sm:p-10 md:grid-cols-[1.15fr_1fr]">
-        <div className="space-y-5 py-7">
-          <p className="font-bold text-peach">Bogotá, Colombia</p>
-          <h1 className="max-w-[12ch] text-[clamp(2.75rem,7vw,6rem)] leading-[.94] font-black tracking-[-.075em]">{t("Aprende haciendo, en Bogotá.","Learn by doing, in Bogotá.")}</h1>
-          <p className="max-w-lg text-lg">{t("Descubre talleres presenciales y conecta con los profesores que los imparten.","Discover in-person workshops and connect with the instructors who lead them.")}</p>
-          <a className="inline-block rounded bg-peach px-5 py-3 font-bold text-cocoa hover:bg-white" href="#talleres">{t("Ver talleres","Browse workshops")}</a>
-        </div><HeroPoster/>
+    </div></header>
+    <main className="wrap">
+      <section className="hero">
+        <div className="hero-copy">
+          <p className="location">Bogotá, Colombia</p>
+          <h1>{t("Un día para crear.","A day to make something.")}</h1>
+          <p>{t("Talleres presenciales para aprender con las manos y llevarte algo hecho por ti.","In-person workshops to learn by doing and take home something you made.")}</p>
+        </div>
+        <HeroPoster/>
       </section>
-      <section id="talleres" className="border-t border-sand py-10">
-        <h2 className="subhead">{t("Próximos talleres","Upcoming workshops")}</h2>
-        {unavailable ? <p>{t("El catálogo no está disponible en este momento.","The catalogue is temporarily unavailable.")}</p> : <Catalog workshops={workshops} locale={locale} learn={learn}/>}
+      <section id="talleres" className="catalog">
+        {unavailable ? <><h2>{t("Encuentra tu próximo taller","Find your next workshop")}</h2><p>{t("El catálogo no está disponible en este momento.","The catalogue is temporarily unavailable.")}</p></> :
+          <Catalog workshops={workshops} locale={locale} learn={learn} demo={isDemo}/>}
       </section>
+      {!!picks.length && <section id="para-empezar" className="block">
+        <h2>{t("Para empezar","Start here")}</h2>
+        <div className="editorial">{picks.map(workshop=><article className="feature" key={workshop.id}>
+          <img src={workshop.en==="Handmade cups"?"/redesign/images/clay.webp":"/redesign/images/bowl.webp"} alt=""/>
+          <div><strong>{workshop[locale]}</strong><p>{workshop.project?.[locale]}</p>
+            <a className="text-button" href={`#taller-${workshop.id}`}>{t("Ver en el catálogo","Find in the catalogue")}</a>
+          </div>
+        </article>)}</div>
+      </section>}
       <section id="como-funciona" className="bg-sand/30 p-6 sm:p-9">
         <h2 className="subhead">{t("De la reserva al taller","From booking to workshop")}</h2>
         <ol className="grid list-inside list-decimal gap-5 sm:grid-cols-3">

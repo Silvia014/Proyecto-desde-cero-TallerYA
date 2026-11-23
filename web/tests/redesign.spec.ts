@@ -13,3 +13,16 @@ test("the redesign preview filters workshops and preserves the selected language
   await expect(page.getByRole("dialog")).toBeVisible();
   await expect(page.getByRole("link",{name:"Book in Learn"})).toHaveAttribute("href",/\/en\/learn\?taller=5$/);
 });
+
+test("the default homepage shows the proposed photo catalogue and real booking links",async({page})=>{
+  await page.goto("/");
+  await expect(page).toHaveURL(/\/es$/);
+  await expect(page.getByRole("heading",{level:1})).toHaveText("Un día para crear.");
+  await page.getByRole("searchbox",{name:"Buscar talleres"}).fill("alfombras");
+  const card=page.locator("#live-workshop-grid article");
+  await expect(card).toHaveCount(1);
+  const image=card.locator("img");
+  await expect.poll(()=>image.evaluate((element:HTMLImageElement)=>element.naturalWidth)).toBeGreaterThan(0);
+  await card.getByRole("button",{name:"Ver taller"}).click();
+  await expect(page.getByRole("dialog").getByRole("link",{name:"Reservar",exact:true})).toHaveAttribute("href",/\/es\/learn\?taller=\d+$/);
+});
