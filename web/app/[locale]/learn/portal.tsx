@@ -2,6 +2,7 @@
 
 import {useEffect,useState} from "react";
 import type {FormEvent,ReactNode} from "react";
+import {LanguageSelector} from "../../public-tools";
 import {dateOf,money} from "../../shared";
 import type {Locale,Workshop} from "../../shared";
 
@@ -31,6 +32,27 @@ function Field({name,label,type="text",value,required=true,min,max,step}:{
 }){
   return <label className="field">{label}<input name={name} type={type} defaultValue={value} required={required}
     minLength={type==="password"?12:undefined} min={min} max={max} step={step}/></label>;
+}
+
+function PasswordField({locale,register}:{locale:Locale;register:boolean}) {
+  const [visible,setVisible]=useState(false);
+  const es=locale==="es";
+  const label=visible?(es?"Ocultar contraseña":"Hide password"):(es?"Mostrar contraseña":"Show password");
+  return <div className="field">
+    <label htmlFor="learn-password">{es?"Contraseña (12 caracteres como mínimo)":"Password (at least 12 characters)"}</label>
+    <div className="relative">
+      <input id="learn-password" name="password" type={visible?"text":"password"} required minLength={12}
+        autoComplete={register?"new-password":"current-password"} className="w-full" style={{paddingRight:"3rem"}}/>
+      <button type="button" aria-label={label} aria-controls="learn-password" title={label}
+        className="absolute inset-y-0 right-0 grid w-11 place-items-center text-cocoa" onClick={()=>setVisible(!visible)}>
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+          <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/>
+          <circle cx="12" cy="12" r="2.5"/>
+          {visible && <path d="m3 3 18 18"/>}
+        </svg>
+      </button>
+    </div>
+  </div>;
 }
 
 export default function Portal({locale,selected}:{locale:Locale;selected?:number}){
@@ -135,14 +157,13 @@ export default function Portal({locale,selected}:{locale:Locale;selected?:number
     hold:t("Pendiente de envío de pago","Awaiting payment instructions"),payment:t("Pendiente de pago","Awaiting payment"),
     confirmed:t("Confirmada","Confirmed"),cancelled:t("Cancelada","Cancelled"),expired:t("Caducada","Expired"),
   };
-  const learnPath=(language:string)=>`/${language}/learn${selected?`?taller=${selected}`:""}`;
 
   return <main className="shell py-8">
     <header className="mb-8 flex flex-wrap items-center justify-between gap-4">
       <h1 className="text-3xl font-black">Learn TallerYA</h1>
       <nav className="flex flex-wrap gap-4">
         <a href={`/${locale}#talleres`}>{t("Catálogo","Catalogue")}</a>
-        <a href={learnPath("es")} lang="es">Español</a><a href={learnPath("en")} lang="en">English</a>
+        <LanguageSelector locale={locale}/>
       </nav>
     </header>
     {message && <p role="status" className="mb-4 rounded bg-peach p-3">{message}</p>}
@@ -150,7 +171,7 @@ export default function Portal({locale,selected}:{locale:Locale;selected?:number
       <form className="max-w-md space-y-4" onSubmit={form(authenticate)}>
         {register && <><Field name="name" label={t("Nombre","Name")}/><Field name="phone" type="tel" label={t("Teléfono","Phone")}/></>}
         <Field name="email" type="email" label={t("Correo electrónico","Email")}/>
-        <Field name="password" type="password" label={t("Contraseña (12 caracteres como mínimo)","Password (at least 12 characters)")}/>
+        <PasswordField key={String(register)} locale={locale} register={register}/>
         {register && <>
           <label className="block"><input name="privacy" type="checkbox" required/> {t("Acepto el","I accept the")} <a className="underline" href={`/${locale}/privacy`} target="_blank" rel="noreferrer">{t("aviso de privacidad","privacy notice")}</a></label>
           <label className="block"><input name="notices" type="checkbox"/> {t("Quiero recibir novedades y avisos de plazas.","I want news and availability notifications.")}</label>

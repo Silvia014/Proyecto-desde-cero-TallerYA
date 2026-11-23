@@ -16,6 +16,8 @@ from pydantic import AwareDatetime, BaseModel, EmailStr, Field, HttpUrl
 
 @asynccontextmanager
 async def lifespan(_):
+    if os.getenv("VERCEL") == "1" and not os.getenv("TALLERYA_DATABASE_URL"):
+        raise RuntimeError("Configure TALLERYA_DATABASE_URL for the hosted API")
     if os.getenv("TALLERYA_DEMO") == "1":
         from api.demo import seed
         seed()
@@ -303,7 +305,8 @@ def slots(connection, workshop):
 
 def public_workshop(connection, row):
     workshop = {**dict(row), "available": slots(connection, row)}
-    if os.getenv("TALLERYA_DEMO") == "1":
+    workshop["sample"] = row["venue"].startswith("[Demo] ")
+    if workshop["sample"] or os.getenv("TALLERYA_DEMO") == "1":
         from api.demo_catalog import PROJECTS
         workshop["project"] = PROJECTS.get(row["es"])
     return workshop

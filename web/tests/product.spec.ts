@@ -8,7 +8,7 @@ test("Spanish and English catalogue, venue and public SEO",async({page})=>{
   await expect(page.getByText("Datos de prueba").first()).toBeVisible();
   const schema=await page.locator("script[type='application/ld+json']").evaluate(node=>JSON.parse(node.textContent ?? "{}"));
   expect(schema["@graph"][0]["@type"]).toBe("WebSite");
-  await page.getByRole("link",{name:"English",exact:true}).click();
+  await page.getByRole("combobox",{name:"Idioma"}).selectOption("en");
   await expect(page.locator("html")).toHaveAttribute("lang","en");
   await expect(page.getByRole("heading",{name:"Upcoming workshops"})).toBeVisible();
   await expect(page.getByRole("heading",{name:"Ceramics by hand"})).toBeVisible();
@@ -91,7 +91,20 @@ test("the demo explains workshop projects, group visits and the illustrative gal
   await gallery.scrollIntoViewIfNeeded();
   await expect(gallery.getByRole("img")).toHaveCount(3);
   await expect.poll(()=>gallery.getByRole("img").first().evaluate(img=>(img as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
-  await page.getByRole("link",{name:"Español",exact:true}).click();
+  await page.getByRole("combobox",{name:"Language"}).selectOption("es");
   await expect(page.getByRole("heading",{name:"Qué esperar"})).toBeVisible();
   await expect(page.getByRole("heading",{name:"Creación de alfombras"})).toHaveCount(1);
+});
+
+test("registration password can be revealed and hidden",async({page})=>{
+  await page.goto("/en/learn?taller=1");
+  await page.getByRole("button",{name:"Create account",exact:true}).click();
+  const password=page.locator('input[name="password"]');
+  await expect(password).toHaveAttribute("type","password");
+  await page.getByRole("button",{name:"Show password"}).click();
+  await expect(password).toHaveAttribute("type","text");
+  await page.getByRole("button",{name:"Hide password"}).click();
+  await expect(password).toHaveAttribute("type","password");
+  await page.getByRole("combobox",{name:"Language"}).selectOption("es");
+  await expect(page).toHaveURL(/\/es\/learn\?taller=1$/);
 });

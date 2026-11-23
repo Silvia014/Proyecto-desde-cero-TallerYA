@@ -109,3 +109,11 @@ La CI prepara una base independiente llamada `tallerya_test`, ejecuta pytest en 
 The student, teacher and superadmin use the same sign-in page. Learn opens the dashboard assigned to the account. In local Docker development, open `http://localhost:3000/en/learn` or `http://localhost:3000/es/learn`. Use the demo accounts above to try each role. In a real environment, create the owner once with `docker compose exec api python -m api.owner`. The owner can assign the teacher role to a registered user. Set `TALLERYA_LEARN_URL` to the Learn subdomain once it is deployed.
 
 The local demo runs with either SQLite or local PostgreSQL. A hosted Supabase project is only needed if you choose Supabase for the hosted database. Use a dedicated TallerYA project, apply the SQL migration, and set the connection string on the server.
+
+## Production on Vercel
+
+The Next.js project uses `web` as its root. Deploy the same repository in a second Vercel project with the repository root and the FastAPI framework preset. The repository-root `app.py` exposes FastAPI. Set the API project's server-side `TALLERYA_DATABASE_URL` to the Supabase session-pooler URL from **Connect**, with TLS, and set `TALLERYA_JWT_SECRET` to a strong random secret. Keep demo mode off on both projects.
+
+Once the API project answers `/health` and `/workshops`, set `TALLERYA_API` on the Next.js project to the API deployment's HTTPS origin, without a trailing slash. Set `TALLERYA_PUBLIC_URL` on both projects to the public Next.js URL and redeploy. Check the frontend's `/api/workshops` before trying to book from Learn. Keep database credentials and the JWT secret on the API project only.
+
+Run `python -m api.jobs` on a scheduled worker for queued email and periodic expiry. The booking API also checks expiry when reading and changing reservations.

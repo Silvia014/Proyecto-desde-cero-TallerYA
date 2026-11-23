@@ -1,6 +1,6 @@
 import {notFound} from "next/navigation";
 import type {Metadata} from "next";
-import {AnalyticsChoice,Catalog,HeroPoster,TrackedLink,WorkshopGallery} from "../public-tools";
+import {AnalyticsChoice,Catalog,HeroPoster,TrackedLink,WorkshopGallery,LanguageSelector} from "../public-tools";
 import type {Workshop} from "../shared";
 
 type Params = {params:Promise<{locale:string}>};
@@ -34,7 +34,7 @@ export default async function Landing({params}:Params){
     "@graph":[
       {"@type":"WebSite",name:"TallerYA",url:new URL("/"+locale,base).href,inLanguage:locale,
         description:t("Talleres presenciales en Bogotá, Colombia.","In-person workshops in Bogotá, Colombia.")},
-      ...(!isDemo ? workshops.filter(workshop=>workshop.venue).map(workshop=>({
+      ...(!isDemo ? workshops.filter(workshop=>workshop.venue && !workshop.sample).map(workshop=>({
         "@type":"Event",name:workshop[locale],startDate:new Date(workshop.starts*1000).toISOString(),
         endDate:new Date((workshop.starts+workshop.minutes*60)*1000).toISOString(),
         eventAttendanceMode:"https://schema.org/OfflineEventAttendanceMode",
@@ -51,8 +51,7 @@ export default async function Landing({params}:Params){
       <a className="text-2xl font-black tracking-tight" href={`/${locale}`}>Taller<span className="text-cocoa">YA</span></a>
       <nav className="flex flex-wrap items-center gap-4">
         <a href="#talleres">{t("Talleres","Workshops")}</a><a href="#como-funciona">{t("Cómo funciona","How it works")}</a><a href="#que-esperar">{t("Qué esperar","What to expect")}</a><a href="#galeria">{t("Galería","Gallery")}</a><a href="#grabaciones">{t("Grabaciones","Recordings")}</a>
-        <a href="/es" lang="es" aria-current={locale==="es"?"page":undefined}>Español</a>
-        <a href="/en" lang="en" aria-current={locale==="en"?"page":undefined}>English</a>
+        <LanguageSelector locale={locale}/>
         <TrackedLink name="learn_open" locale={locale} href={learn}>Learn TallerYA</TrackedLink>
       </nav>
     </header>

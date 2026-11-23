@@ -130,3 +130,15 @@ export function Catalog({workshops,locale,learn}:{workshops:Workshop[];locale:Lo
 export function TrackedLink({name,locale,href,children}:{name:string;locale:Locale;href:string;children:React.ReactNode}){
   return <a className="button" href={href} onClick={()=>track(name,locale)}>{children}</a>;
 }
+
+export function LanguageSelector({locale}:{locale:Locale}) {
+  return <select aria-label={locale==="es"?"Idioma":"Language"} value={locale}
+    className="rounded border border-sand bg-white px-2 py-1 text-cocoa"
+    onChange={event=>{
+      const {pathname,search,hash}=window.location;
+      window.location.assign(pathname.replace(/^\/(es|en)(?=\/|$)/,"/"+event.target.value)+search+hash);
+    }}>
+    <option value="es" lang="es">Español</option>
+    <option value="en" lang="en">English</option>
+  </select>;
+}
