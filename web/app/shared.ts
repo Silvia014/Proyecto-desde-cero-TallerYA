@@ -1,5 +1,6 @@
 export type Locale = "es" | "en";
 export interface Workshop {
+  project?: Record<Locale, string> | null;
   id: number; es: string; en: string; starts: number; minutes: number;
   capacity: number; price: number; currency: string; available: number;
   teacher: number | null; published: boolean; venue: string;

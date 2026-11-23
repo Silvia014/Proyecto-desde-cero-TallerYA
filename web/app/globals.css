@@ -1,11 +1,20 @@
 @import "tailwindcss";
-:root { color:#142044; background:#f7f7f0; font-family:system-ui,sans-serif; }
+@theme {
+  --color-peach: #ffcc99;
+  --color-sand: #bb9966;
+  --color-caramel: #996633;
+  --color-cocoa: #663300;
+}
+:root { color:var(--color-cocoa); background:#fff; font-family:system-ui,sans-serif; accent-color:var(--color-cocoa); }
 body { margin:0; }
 @layer components {
   .shell { @apply mx-auto w-full max-w-6xl px-5 sm:px-9; }
-  .button { @apply inline-block rounded-md bg-indigo-800 px-4 py-2.5 font-semibold text-white hover:bg-indigo-950 focus-visible:outline-2 focus-visible:outline-offset-4; }
+  .button { @apply inline-block rounded-md bg-cocoa px-4 py-2.5 font-semibold text-white hover:bg-caramel focus-visible:outline-2 focus-visible:outline-offset-4; }
   .field { @apply grid gap-1 text-sm font-semibold; }
-  .field input:not([type=checkbox]), .field select { @apply rounded border border-slate-400 bg-white px-3 py-2 text-base; }
-  .panel { @apply rounded-xl border border-slate-300 bg-white p-5; }
+  .field input:not([type=checkbox]), .field select { @apply rounded border border-caramel bg-white px-3 py-2 text-base; }
+  .panel { @apply rounded-xl border border-sand bg-white p-5; }
   .subhead { @apply mb-4 text-3xl font-bold tracking-tight; }
 }
+
+.gallery-photo { aspect-ratio: 4 / 3; overflow: hidden; background: var(--color-peach); }
+.gallery-photo img { width: 100%; height: calc(100% + 48px); object-fit: cover; transform: translateY(calc(-24px + var(--gallery-shift, 0px))); }

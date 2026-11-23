@@ -103,3 +103,9 @@ El contenedor de PostgreSQL aplica la migración inicial cuando crea su volumen.
 Para Supabase alojado, aplica el archivo de `supabase/migrations/` como migración SQL de un proyecto propio. Configura `TALLERYA_DATABASE_URL` en FastAPI y en jobs con la cadena del panel Connect, usando conexión directa o el pooler de sesión y TLS. Usa el Compose principal sin el fichero adicional. La conexión queda en el servidor y las tablas viven en el esquema privado `tallerya` con RLS. FastAPI mantiene el JWT y comprueba los permisos de cada operación. La migración inicial crea un esquema vacío. La transferencia de datos históricos de SQLite se trata por separado.
 
 La CI prepara una base independiente llamada `tallerya_test`, ejecuta pytest en SQLite y PostgreSQL y usa Playwright en Chromium con referencias visuales Linux. El acuerdo de aforo se serializa dentro de una transacción mediante el bloqueo del motor en SQLite y un advisory lock transaccional en PostgreSQL.
+
+## Access to Learn TallerYA
+
+The student, teacher and superadmin use the same sign-in page. Learn opens the dashboard assigned to the account. In local Docker development, open `http://localhost:3000/en/learn` or `http://localhost:3000/es/learn`. Use the demo accounts above to try each role. In a real environment, create the owner once with `docker compose exec api python -m api.owner`. The owner can assign the teacher role to a registered user. Set `TALLERYA_LEARN_URL` to the Learn subdomain once it is deployed.
+
+The local demo runs with either SQLite or local PostgreSQL. A hosted Supabase project is only needed if you choose Supabase for the hosted database. Use a dedicated TallerYA project, apply the SQL migration, and set the connection string on the server.

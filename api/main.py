@@ -302,7 +302,11 @@ def slots(connection, workshop):
 
 
 def public_workshop(connection, row):
-    return {**dict(row), "available": slots(connection, row)}
+    workshop = {**dict(row), "available": slots(connection, row)}
+    if os.getenv("TALLERYA_DEMO") == "1":
+        from api.demo_catalog import PROJECTS
+        workshop["project"] = PROJECTS.get(row["es"])
+    return workshop
 
 
 @app.get("/workshops")

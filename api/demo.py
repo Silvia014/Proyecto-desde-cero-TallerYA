@@ -1,5 +1,9 @@
 """Opt-in fixtures for a local or isolated demo database."""
 
+from datetime import datetime, time, timedelta
+from zoneinfo import ZoneInfo
+
+from api.demo_catalog import EDITIONS
 from api.main import DAY, db, now, passwords
 
 
@@ -25,9 +29,25 @@ def sample_certificate():
     return bytes(result)
 
 
+def seed_more_editions(connection):
+    if connection.execute("SELECT 1 FROM demo_seed WHERE marker=2").fetchone():
+        return
+    bogota = ZoneInfo("America/Bogota")
+    today = datetime.fromtimestamp(now(), bogota).date()
+    teacher = connection.execute("SELECT id FROM users WHERE email='teacher@example.com'").fetchone()["id"]
+    for es, en, days, hour, minutes, price, venue, _, _ in EDITIONS:
+        starts = int(datetime.combine(today + timedelta(days=days), time(hour), bogota).timestamp())
+        connection.execute("""
+            INSERT INTO workshops(es,en,starts,minutes,price,currency,capacity,published,teacher,venue)
+            VALUES(?,?,?,?,?,'COP',20,1,?,?)
+        """, (es, en, starts, minutes, price * 100, teacher, venue))
+    connection.execute("INSERT INTO demo_seed VALUES(2)")
+
+
 def seed():
     with db() as connection:
-        if connection.execute("SELECT 1 FROM demo_seed").fetchone():
+        if connection.execute("SELECT 1 FROM demo_seed WHERE marker=1").fetchone():
+            seed_more_editions(connection)
             return
         if connection.execute("SELECT 1 FROM users").fetchone():
             raise RuntimeError("Demo data requires a dedicated empty database")
@@ -63,3 +83,4 @@ def seed():
             VALUES(1,2,'confirmed',9800000,'COP',9800000)
         """)
         connection.execute("INSERT INTO demo_seed VALUES(1)")
+        seed_more_editions(connection)
