@@ -1,3 +1,4 @@
+import os
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
@@ -13,6 +14,15 @@ PDF = b"%PDF-1.7\ntest content"
 @pytest.fixture
 def case(monkeypatch, tmp_path):
     clock = [1_800_000_000]
+    postgres = os.getenv("TALLERYA_TEST_DATABASE_URL")
+    if postgres:
+        import psycopg
+        with psycopg.connect(postgres) as connection:
+            assert connection.info.dbname == "tallerya_test", "Use a dedicated tallerya_test database"
+            connection.execute("TRUNCATE tallerya.outbox, tallerya.interests, tallerya.bookings, tallerya.workshops, tallerya.users, tallerya.events, tallerya.demo_seed RESTART IDENTITY")
+        monkeypatch.setenv("TALLERYA_DATABASE_URL", postgres)
+    else:
+        monkeypatch.delenv("TALLERYA_DATABASE_URL", raising=False)
     monkeypatch.setenv("TALLERYA_DB", str(tmp_path / "test.sqlite3"))
     monkeypatch.setenv("TALLERYA_JWT_SECRET", "test-secret-" * 4)
     monkeypatch.setattr(main, "now", lambda: clock[0])

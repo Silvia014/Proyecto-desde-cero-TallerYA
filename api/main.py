@@ -21,7 +21,7 @@ async def lifespan(_):
         seed()
     else:
         with db() as connection:
-            if connection.execute("SELECT 1 FROM sqlite_master WHERE name='demo_seed'").fetchone():
+            if connection.execute("SELECT 1 FROM demo_seed").fetchone():
                 raise RuntimeError("Use a separate database for production")
     yield
 
@@ -71,6 +71,7 @@ CREATE TABLE IF NOT EXISTS outbox (
  kind TEXT NOT NULL, workshop INTEGER NOT NULL, locale TEXT NOT NULL,
  subject TEXT NOT NULL, body TEXT NOT NULL, sent INTEGER
 );
+CREATE TABLE IF NOT EXISTS demo_seed (marker INTEGER PRIMARY KEY);
 CREATE TABLE IF NOT EXISTS events (
  id INTEGER PRIMARY KEY, name TEXT NOT NULL, locale TEXT NOT NULL, happened INTEGER NOT NULL
 );
@@ -83,6 +84,11 @@ def now():
 
 @contextmanager
 def db():
+    if url := os.getenv("TALLERYA_DATABASE_URL"):
+        from api.postgres import postgres_db
+        with postgres_db(url) as connection:
+            yield connection
+        return
     connection = sqlite3.connect(os.getenv("TALLERYA_DB", "tallerya.sqlite3"), timeout=15)
     connection.row_factory = sqlite3.Row
     try:
@@ -206,7 +212,7 @@ def register(request: Signup):
         conflict(connection.execute("SELECT 1 FROM users WHERE email=?", (email,)).fetchone(), "email_in_use")
         connection.execute(
             "INSERT INTO users(name,email,phone,password,locale,notices,privacy,accepted) VALUES(?,?,?,?,?,?,?,?)",
-            (request.name, email, request.phone, hashed, request.locale, request.notices, privacy_version, now()),
+            (request.name, email, request.phone, hashed, request.locale, int(request.notices), privacy_version, now()),
         )
     return {"registered": True}
 
@@ -235,16 +241,16 @@ class Preference(BaseModel):
 @app.put("/me/preferences")
 def preferences(request: Preference, user=Depends(current)):
     with db() as connection:
-        connection.execute("UPDATE users SET notices=? WHERE id=?", (request.notices, user["id"]))
+        connection.execute("UPDATE users SET notices=? WHERE id=?", (int(request.notices), user["id"]))
     return request
 
 
 def delete_user(connection, user_id):
     target = find(connection, "SELECT * FROM users WHERE id=? AND deleted=0", (user_id,))
     conflict(target["role"] == "owner", "owner_protected")
-    connection.execute("DELETE FROM interests WHERE user=?", (user_id,))
-    connection.execute("UPDATE bookings SET status='cancelled' WHERE user=? AND status IN ('hold','payment')", (user_id,))
-    connection.execute("UPDATE bookings SET certificate=NULL WHERE user=?", (user_id,))
+    connection.execute("DELETE FROM interests WHERE \"user\"=?", (user_id,))
+    connection.execute("UPDATE bookings SET status='cancelled' WHERE \"user\"=? AND status IN ('hold','payment')", (user_id,))
+    connection.execute("UPDATE bookings SET certificate=NULL WHERE \"user\"=?", (user_id,))
     connection.execute("UPDATE users SET deleted=1, email=?, name='', phone='', password='', notices=0, version=version+1 WHERE id=?",
                        (f"deleted-{user_id}@invalid.example", user_id))
 
@@ -290,8 +296,8 @@ def expire(connection, clock):
 
 
 def slots(connection, workshop):
-    occupied = connection.execute(f"SELECT count(*) FROM bookings WHERE workshop=? AND status IN ({ACTIVE})",
-                                  (workshop["id"],)).fetchone()[0]
+    occupied = connection.execute(f"SELECT count(*) AS occupied FROM bookings WHERE workshop=? AND status IN ({ACTIVE})",
+                                  (workshop["id"],)).fetchone()["occupied"]
     return workshop["capacity"] - occupied
 
 
@@ -322,17 +328,17 @@ def editor_values(connection, workshop):
     if workshop.teacher is not None:
         find(connection, "SELECT id FROM users WHERE id=? AND role='teacher' AND deleted=0", (workshop.teacher,))
     return (workshop.es, workshop.en, int(workshop.starts.timestamp()), workshop.minutes,
-            workshop.price, workshop.currency, workshop.capacity, workshop.published, workshop.teacher, workshop.venue)
+            workshop.price, workshop.currency, workshop.capacity, int(workshop.published), workshop.teacher, workshop.venue)
 
 
 @app.post("/admin/workshops", status_code=201)
 def create_workshop(workshop: Workshop, _=Depends(staff)):
     with db() as connection:
         result = connection.execute(
-            "INSERT INTO workshops(es,en,starts,minutes,price,currency,capacity,published,teacher,venue) VALUES(?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO workshops(es,en,starts,minutes,price,currency,capacity,published,teacher,venue) VALUES(?,?,?,?,?,?,?,?,?,?) RETURNING id",
             editor_values(connection, workshop),
         )
-        return {"id": result.lastrowid}
+        return {"id": result.fetchone()["id"]}
 
 
 @app.put("/admin/workshops/{workshop_id}")
@@ -369,7 +375,7 @@ def agenda(user=Depends(current)):
 def queue(connection, user, workshop_id, dedupe, kind, es, en):
     subject, body = en if user["locale"] == "en" else es
     connection.execute(
-        "INSERT OR IGNORE INTO outbox(dedupe,recipient,kind,workshop,locale,subject,body) VALUES(?,?,?,?,?,?,?)",
+        "INSERT INTO outbox(dedupe,recipient,kind,workshop,locale,subject,body) VALUES(?,?,?,?,?,?,?) ON CONFLICT(dedupe) DO NOTHING",
         (dedupe, user["id"], kind, workshop_id, user["locale"], subject, body),
     )
 
@@ -381,11 +387,11 @@ def book(workshop_id: int, user=Depends(current)):
         expire(connection, clock)
         workshop = find(connection, "SELECT * FROM workshops WHERE id=? AND published=1", (workshop_id,))
         conflict(workshop["starts"] - clock < DAY, "booking_closed")
-        conflict(connection.execute(f"SELECT 1 FROM bookings WHERE workshop=? AND user=? AND status IN ({ACTIVE})",
+        conflict(connection.execute(f"SELECT 1 FROM bookings WHERE workshop=? AND \"user\"=? AND status IN ({ACTIVE})",
                                     (workshop_id, user["id"])).fetchone(), "existing_booking")
         conflict(slots(connection, workshop) <= 0, "sold_out")
-        booking = connection.execute("INSERT INTO bookings(workshop,user,status,price,currency) VALUES(?,?,'hold',?,?)",
-                                     (workshop_id, user["id"], workshop["price"], workshop["currency"])).lastrowid
+        booking = connection.execute("INSERT INTO bookings(workshop,\"user\",status,price,currency) VALUES(?,?,'hold',?,?) RETURNING id",
+                                     (workshop_id, user["id"], workshop["price"], workshop["currency"])).fetchone()["id"]
         queue(connection, user, workshop_id, f"hold:{booking}", "hold",
               ("Plaza apartada", "Recibirás por WhatsApp un enlace o QR. Tendrás 24 horas desde el mensaje para pagar y confirmar."),
               ("Place held", "We will send a link or QR via WhatsApp. You have 24 hours from that message to pay and confirm."))
@@ -396,7 +402,7 @@ def book(workshop_id: int, user=Depends(current)):
 def interest(workshop_id: int, user=Depends(current)):
     with db() as connection:
         find(connection, "SELECT id FROM workshops WHERE id=? AND published=1 AND starts>=?", (workshop_id, now() + DAY))
-        connection.execute("INSERT OR IGNORE INTO interests(workshop,user) VALUES(?,?)", (workshop_id, user["id"]))
+        connection.execute("INSERT INTO interests(workshop,\"user\") VALUES(?,?) ON CONFLICT DO NOTHING", (workshop_id, user["id"]))
     return Response(status_code=204)
 
 
@@ -413,7 +419,7 @@ def booking_view(row):
 def my_bookings(user=Depends(current)):
     with db() as connection:
         expire(connection, now())
-        ids = connection.execute("SELECT id FROM bookings WHERE user=? ORDER BY id DESC", (user["id"],))
+        ids = connection.execute("SELECT id FROM bookings WHERE \"user\"=? ORDER BY id DESC", (user["id"],))
         return [booking_view(booking_details(connection, row["id"])) for row in ids]
 
 
@@ -421,7 +427,7 @@ def my_bookings(user=Depends(current)):
 def all_bookings(_=Depends(staff)):
     with db() as connection:
         expire(connection, now())
-        ids = connection.execute("SELECT id,user FROM bookings ORDER BY id DESC")
+        ids = connection.execute("SELECT id,\"user\" FROM bookings ORDER BY id DESC")
         return [booking_view(booking_details(connection, row["id"])) | {
             "contact": dict(find(connection, "SELECT name,email,phone FROM users WHERE id=?", (row["user"],)))
         } for row in ids]
@@ -469,11 +475,11 @@ def cancel_booking(booking_id: int, user=Depends(current)):
         conflict(booking["status"] not in ("hold", "payment", "confirmed"), "invalid_state")
         workshop = find(connection, "SELECT * FROM workshops WHERE id=?", (booking["workshop"],))
         was_full = slots(connection, workshop) == 0
-        connection.execute("UPDATE bookings SET status='cancelled',refund=? WHERE id=?", (bool(booking["paid"]), booking_id))
+        connection.execute("UPDATE bookings SET status='cancelled',refund=? WHERE id=?", (int(bool(booking["paid"])), booking_id))
         if was_full and workshop["published"]:
             base = os.getenv("TALLERYA_PUBLIC_URL", "http://localhost:3000").rstrip("/")
             for recipient in connection.execute("""
-                SELECT u.* FROM interests i JOIN users u ON i.user=u.id
+                SELECT u.* FROM interests i JOIN users u ON i."user"=u.id
                 WHERE i.workshop=? AND u.notices=1 AND u.deleted=0 AND u.id!=?
             """, (workshop["id"], user["id"])):
                 queue(connection, recipient, workshop["id"], f"available:{booking_id}:{recipient['id']}", "available",
@@ -496,8 +502,10 @@ def refund(booking_id: int, request: Refund, _=Depends(staff)):
 def settlement(workshop_id: int, _=Depends(staff)):
     with db() as connection:
         find(connection, "SELECT id FROM workshops WHERE id=?", (workshop_id,))
-        rows = pd.read_sql_query("SELECT currency,paid,refunded FROM bookings WHERE workshop=? AND paid>0",
-                                 connection, params=(workshop_id,))
+        records = connection.execute(
+            "SELECT currency,paid,refunded FROM bookings WHERE workshop=? AND paid>0", (workshop_id,)
+        ).fetchall()
+        rows = pd.DataFrame.from_records(records, columns=["currency", "paid", "refunded"])
     rows["split"] = (rows.paid - rows.refunded + 2) // 5
     totals = []
     for currency, group in rows.groupby("currency"):

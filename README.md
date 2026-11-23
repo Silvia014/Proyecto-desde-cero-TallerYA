@@ -83,3 +83,23 @@ docker compose -p tallerya-demo --profile test run --rm \
 ```
 
 Para cambios de producto, añade primero los casos de Playwright en `web/tests/`, comprueba que fallen por la conducta que falta y luego implementa el cambio. Si cambia el diseño, revisa la diferencia visual antes de actualizar una referencia.
+
+## PostgreSQL local y Supabase
+
+Compose incluye la web, FastAPI, el proceso de correo y vencimientos y Playwright (perfil `test`). Para añadir PostgreSQL en local, usa una contraseña de desarrollo alfanumérica y la configuración adicional:
+
+```sh
+export TALLERYA_LOCAL_DB_PASSWORD=soloParaDesarrollo42
+export TALLERYA_JWT_SECRET="$(openssl rand -hex 32)"
+export TALLERYA_DEMO=1
+export TALLERYA_TEST_ORIGIN=http://web:3000
+export COMPOSE_FILE=compose.yaml:compose.postgres.yaml
+docker compose up --build --wait
+docker compose --profile test run --rm --build playwright
+```
+
+El contenedor de PostgreSQL aplica la migración inicial cuando crea su volumen. La demo contiene talleres y ubicaciones inventados. Usa otra base y desactiva `TALLERYA_DEMO` para producción.
+
+Para Supabase alojado, aplica el archivo de `supabase/migrations/` como migración SQL de un proyecto propio. Configura `TALLERYA_DATABASE_URL` en FastAPI y en jobs con la cadena del panel Connect, usando conexión directa o el pooler de sesión y TLS. Usa el Compose principal sin el fichero adicional. La conexión queda en el servidor y las tablas viven en el esquema privado `tallerya` con RLS. FastAPI mantiene el JWT y comprueba los permisos de cada operación. La migración inicial crea un esquema vacío. La transferencia de datos históricos de SQLite se trata por separado.
+
+La CI prepara una base independiente llamada `tallerya_test`, ejecuta pytest en SQLite y PostgreSQL y usa Playwright en Chromium con referencias visuales Linux. El acuerdo de aforo se serializa dentro de una transacción mediante el bloqueo del motor en SQLite y un advisory lock transaccional en PostgreSQL.

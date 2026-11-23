@@ -5,6 +5,7 @@ x-api: &api
     dockerfile: api/Dockerfile
   environment:
     TALLERYA_DB: /data/tallerya.sqlite3
+    TALLERYA_DATABASE_URL: ${TALLERYA_DATABASE_URL:-}
     TALLERYA_JWT_SECRET: ${TALLERYA_JWT_SECRET:?Set a JWT secret of at least 32 characters}
     TALLERYA_PUBLIC_URL: ${TALLERYA_PUBLIC_URL:-http://localhost:3000}
     TALLERYA_DEMO: ${TALLERYA_DEMO:-0}

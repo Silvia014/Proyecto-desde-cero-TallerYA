@@ -8,5 +8,5 @@ with db() as connection:
     connection.execute(
         "INSERT INTO users(name,email,phone,password,locale,notices,privacy,accepted,role) VALUES(?,?,?,?,?,?,?,?,?)",
         (request.name, request.email.lower(), request.phone, passwords.hash(request.password),
-         request.locale, False, privacy_version, now(), "owner"),
+         request.locale, 0, privacy_version, now(), "owner"),
     )

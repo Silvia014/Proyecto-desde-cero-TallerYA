@@ -10,3 +10,5 @@ next-env.d.ts
 work-npm-cache/
 web/playwright-report/
 web/test-results/
+
+supabase/.temp/

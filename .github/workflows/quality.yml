@@ -11,6 +11,8 @@ jobs:
     timeout-minutes: 15
     env:
       TALLERYA_JWT_SECRET: ci-demo-secret-not-for-production-12345
+      COMPOSE_FILE: compose.yaml:compose.postgres.yaml
+      TALLERYA_LOCAL_DB_PASSWORD: local-ci-password
       TALLERYA_DEMO: "1"
       TALLERYA_TEST_ORIGIN: http://web:3000
     steps:
@@ -20,7 +22,11 @@ jobs:
           docker compose --profile test config --quiet
           docker compose up --build --wait
       - name: FastAPI integration tests
-        run: docker compose exec -T api python -m pytest -q -p no:cacheprovider api/tests
+        run: |
+          docker compose exec -T postgres createdb -U tallerya tallerya_test
+          cat supabase/migrations/*.sql | docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U tallerya -d tallerya_test
+          docker compose exec -T api python -m pytest -q -p no:cacheprovider api/tests
+          docker compose exec -T -e TALLERYA_TEST_DATABASE_URL=postgresql://tallerya:local-ci-password@postgres:5432/tallerya_test api python -m pytest -q -p no:cacheprovider api/tests
       - name: Playwright E2E and visual comparisons
         run: |
           mkdir -p web/test-results

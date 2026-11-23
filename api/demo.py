@@ -27,7 +27,6 @@ def sample_certificate():
 
 def seed():
     with db() as connection:
-        connection.execute("CREATE TABLE IF NOT EXISTS demo_seed (marker INTEGER PRIMARY KEY)")
         if connection.execute("SELECT 1 FROM demo_seed").fetchone():
             return
         if connection.execute("SELECT 1 FROM users").fetchone():
@@ -56,11 +55,11 @@ def seed():
                 VALUES(?,?,?,?,?,'COP',?,1,3,?)
             """, (es, en, start + day * DAY, minutes, price, capacity, venue))
         connection.execute("""
-            INSERT INTO bookings(workshop,user,status,price,currency,paid,certificate)
+            INSERT INTO bookings(workshop,"user",status,price,currency,paid,certificate)
             VALUES(5,2,'confirmed',7500000,'COP',7500000,?)
         """, (sample_certificate(),))
         connection.execute("""
-            INSERT INTO bookings(workshop,user,status,price,currency,paid)
+            INSERT INTO bookings(workshop,"user",status,price,currency,paid)
             VALUES(1,2,'confirmed',9800000,'COP',9800000)
         """)
         connection.execute("INSERT INTO demo_seed VALUES(1)")
