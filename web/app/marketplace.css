@@ -1,0 +1,66 @@
+
+.marketplace{--paper:#fff;--ink:#502b17;--cocoa:#663300;--peach:#ffcc99;--sand:#bb9966;--caramel:#996633;--cream:#fbf3ea;--line:#dfcbb7;--muted:#765946;background:var(--paper);color:var(--ink);font:15px/1.48 "DM Sans",system-ui,sans-serif;overflow:hidden}
+.marketplace *{box-sizing:border-box}
+.marketplace :is(h1,h2,h3,p,figure){margin:0}
+.marketplace a{color:inherit;text-underline-offset:.24em}
+.marketplace :is(button,input,select){font:inherit;color:inherit}
+.marketplace :is(button,select,a,input):focus-visible{outline:3px solid var(--caramel);outline-offset:3px}
+.marketplace [hidden]{display:none!important}
+.marketplace .wrap{width:min(100% - 48px,1200px);margin-inline:auto}
+.marketplace header{background:var(--paper);border-bottom:1px solid var(--line)}
+.marketplace .mast{display:grid;grid-template-columns:1fr auto;align-items:center;gap:12px;padding-block:16px}
+.marketplace .brand{font-size:28px;font-weight:900;letter-spacing:-.075em;text-decoration:none;color:var(--cocoa)}
+.marketplace .brand span{color:var(--caramel)}
+.marketplace nav{display:flex;gap:10px 17px;align-items:center;flex-wrap:wrap;font-size:14px}
+.marketplace nav a{text-decoration:none;font-weight:700}
+.marketplace .cta{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:8px 16px;border:1px solid transparent;border-radius:9px;background:var(--cocoa);color:white;text-decoration:none;font-weight:750}
+.marketplace .cta:hover{background:#4b2609}
+.marketplace .secondary{background:var(--paper);color:var(--cocoa);border:1px solid var(--line)}
+.marketplace .secondary:hover{background:var(--cream)}
+.marketplace .hero{display:grid;grid-template-columns:.95fr 1.05fr;min-height:295px;margin-block:24px 30px;background:var(--cocoa);color:white;border-radius:17px;overflow:hidden}
+.marketplace .hero-copy{display:flex;flex-direction:column;justify-content:center;gap:12px;padding:26px clamp(24px,5vw,48px)}
+.marketplace .location{color:var(--peach);font-weight:750}
+.marketplace h1{font-family:Georgia,serif;font-size:clamp(34px,6vw,64px);line-height:.99;letter-spacing:-.055em;font-weight:600;max-width:14ch}
+.marketplace .hero-copy p:last-child{max-width:36ch;color:#ffe8d1}
+.marketplace .hero-img{overflow:hidden;position:relative;min-height:180px}
+.marketplace .hero-img img{display:block;width:100%;height:115%;position:absolute;inset:-7.5% 0 auto;object-fit:cover;object-position:50% 48%;transform:translateY(var(--shift,0px))}
+.marketplace .catalog{padding-bottom:29px}
+.marketplace h2{font-family:Georgia,serif;font-weight:600;font-size:clamp(25px,4vw,38px);line-height:1.12;letter-spacing:-.04em}
+.marketplace .section-head{display:flex;align-items:end;justify-content:space-between;flex-wrap:wrap;gap:8px 16px;margin-bottom:15px}
+.marketplace .section-head p,.marketplace .muted{color:var(--muted)}
+.marketplace .tools{padding:14px;background:var(--cream);border-radius:13px;margin-bottom:14px}
+.marketplace .find{display:flex;gap:8px}
+.marketplace .find input{width:100%;min-width:0;height:43px;background:white;border:1px solid var(--line);border-radius:9px;padding:8px 12px}
+.marketplace .filters{display:flex;flex-wrap:wrap;gap:8px;margin-top:9px}
+.marketplace .filters select{padding:6px 10px;border:1px solid var(--line);border-radius:9px;background:white;max-width:100%}
+.marketplace .reset{background:none;border:0;text-decoration:underline;padding:5px 6px}
+.marketplace .results{margin:0 0 12px;color:var(--muted);font-size:14px}
+.marketplace #live-workshop-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px}
+.marketplace .workshop{display:flex;min-width:0;flex-direction:column;overflow:hidden;border:1px solid var(--line);border-radius:13px;background:white}
+.marketplace .photo{aspect-ratio:1.75;background:var(--sand);overflow:hidden}
+.marketplace .photo img{display:block;width:100%;height:100%;object-fit:cover}
+.marketplace .workshop-content{display:flex;flex-direction:column;gap:7px;flex:1;padding:13px}
+.marketplace .workshop h3{font-size:18px;line-height:1.2;letter-spacing:-.028em}
+.marketplace .meta{font-size:13px;color:var(--muted)}
+.marketplace .project{font-size:14px;line-height:1.35;margin-bottom:6px}
+.marketplace .card-bottom{margin-top:auto;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding-top:9px;border-top:1px solid var(--line)}
+.marketplace .price{font-weight:850;font-size:16px;color:var(--cocoa)}
+.marketplace .card-bottom button{min-height:36px;padding:5px 10px}
+.marketplace .empty{border:1px dashed var(--line);padding:22px;border-radius:12px}
+.marketplace .editorial{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-top:16px}
+.marketplace .feature{display:grid;gap:12px;align-items:center;grid-template-columns:35% 1fr;background:var(--cream);padding:12px;border-radius:12px;text-align:left}
+.marketplace .feature img{width:100%;height:100%;min-height:105px;object-fit:cover;border-radius:8px}
+.marketplace .feature h3{font-size:16px;line-height:1.2}
+.marketplace .feature p{margin-block:4px;font-size:14px}
+.marketplace .text-button{background:none;border:0;text-decoration:underline;padding:5px 0;font-weight:750;color:var(--cocoa)}
+.marketplace .block{border-top:1px solid var(--line);padding-block:26px}
+.marketplace dialog{margin:auto;width:min(500px,calc(100% - 24px));max-height:calc(100% - 24px);padding:0;border:1px solid var(--line);border-radius:15px;color:var(--ink);background:var(--paper)}
+.marketplace dialog::backdrop{background:#301a12a0}
+.marketplace .detail-copy{display:grid;gap:10px;padding:20px}
+.marketplace .detail-actions{display:flex;gap:10px;flex-wrap:wrap}
+@media(max-width:740px){.marketplace #live-workshop-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.marketplace .wrap{width:calc(100% - 30px)}}
+@media(max-width:510px){.marketplace .mast{grid-template-columns:1fr}.marketplace .hero{grid-template-columns:1fr;margin-top:15px}.marketplace .hero-img{min-height:170px}.marketplace .hero-copy{padding:24px}.marketplace .editorial{grid-template-columns:1fr}}
+@media(max-width:410px){.marketplace #live-workshop-grid{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){.marketplace .hero-img img{transform:none}}
+
+.marketplace .workshop-availability { color:var(--muted); font-size:13px; }
