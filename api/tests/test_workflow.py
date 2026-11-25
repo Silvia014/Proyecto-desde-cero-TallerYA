@@ -163,3 +163,43 @@ def test_owner_can_move_cancel_and_remove_an_unpaid_registration(case):
     assert client.get("/me/bookings", headers=student).json() == []
     assert client.post(f"/admin/workshops/{second}/archive",headers=admin).status_code == 204
     assert client.get(f"/workshops/{second}").status_code == 404
+
+
+def test_mail_worker_delivers_active_hold_and_skips_cancelled_hold(case, monkeypatch):
+    from api import jobs
+
+    client, clock = case
+    admin, _ = account(client, "admin", "owner")
+    current, _ = account(client, "current")
+    cancelled, _ = account(client, "cancelled")
+    edition = workshop(client, admin, clock[0] + main.DAY * 5, capacity=2)
+    for headers in (current, cancelled):
+        booking = client.post(f"/workshops/{edition}/book", headers=headers).json()["id"]
+    assert client.post(f"/me/bookings/{booking}/cancel", headers=cancelled).status_code == 200
+    delivered = []
+
+    class Mailbox:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return None
+
+        def login(self, *_):
+            pass
+
+        def send_message(self, message):
+            delivered.append(message)
+
+    for key, value in {
+        "HOST":"smtp.example.com", "USER":"smtp-login",
+        "PASSWORD":"fixture-secret", "FROM":"reservas@tallerya.com",
+    }.items():
+        monkeypatch.setenv(f"TALLERYA_SMTP_{key}", value)
+    monkeypatch.setattr(jobs, "now", lambda: clock[0])
+    monkeypatch.setattr(jobs.smtplib, "SMTP_SSL", lambda *args, **kwargs: Mailbox())
+    jobs.run()
+    jobs.run()
+    assert [(email["From"], email["To"]) for email in delivered] == [
+        ("reservas@tallerya.com", "current@example.com"),
+    ]
