@@ -139,3 +139,13 @@ test("the privacy logo returns to the matching landing and analytics stay out of
   await page.getByRole("link",{name:"TallerYA",exact:true}).click();
   await expect(page).toHaveURL(/\/es$/);
 });
+
+for (const locale of ["es","en"]) {
+  test(`the Learn header links back to the ${locale} landing from a section anchor`,async({page})=>{
+    await page.goto(`/${locale}/learn#booking-admin`);
+    const logo=page.locator("main > header").getByRole("link",{name:"Learn TallerYA",exact:true});
+    await expect(logo).toHaveAttribute("href",`/${locale}`);
+    await logo.click();
+    await expect(page).toHaveURL(new RegExp(`/${locale}$`));
+  });
+}

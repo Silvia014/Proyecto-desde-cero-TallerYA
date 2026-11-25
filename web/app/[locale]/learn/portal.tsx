@@ -164,7 +164,9 @@ export default function Portal({locale,selected}:{locale:Locale;selected?:number
 
   return <main className="shell py-8">
     <header className="mb-8 flex flex-wrap items-center justify-between gap-4">
-      <h1 className="text-3xl font-black">Learn TallerYA</h1>
+      <h1 className="text-3xl font-black">
+        <a href={`/${locale}`} className="hover:underline focus-visible:underline">Learn TallerYA</a>
+      </h1>
       <nav className="flex flex-wrap gap-4">
         <a href={`/${locale}#talleres`}>{t("Catálogo","Catalogue")}</a>
         <LanguageSelector locale={locale}/>
