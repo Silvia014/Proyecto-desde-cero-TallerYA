@@ -22,6 +22,9 @@ test("demo admin sees registrations, popularity, earnings, users and certificate
   for(const name of ["Talleres populares","Panel de ganancias","Agenda de cursos","Gestionar inscripciones","Usuarios","Certificados PDF"]){
     await expect(page.getByRole("heading",{name,exact:true})).toBeVisible();
   }
+  await expect(page.getByRole("link",{name:"Todas las inscripciones"})).toHaveAttribute("href","#booking-admin");
+  await expect(page.getByRole("button",{name:"Cancelar inscripción"}).first()).toBeVisible();
+  await expect(page.getByRole("button",{name:"Archivar taller"}).first()).toBeVisible();
   await expect(page.getByRole("table",{name:"Talleres populares"})).toContainText("Cerámica a mano");
   await expect(page.getByRole("table",{name:"Panel de ganancias"})).toContainText("COP");
   await expect(page.getByText("Demo Alumna").first()).toBeVisible();
@@ -110,4 +113,15 @@ test("registration password can be revealed and hidden",async({page})=>{
   await expect(password).toHaveAttribute("type","password");
   await page.getByRole("combobox",{name:"Language"}).selectOption("es");
   await expect(page).toHaveURL(/\/es\/learn\?taller=1$/);
+});
+
+test("the site publishes booking contacts and a bilingual privacy notice",async({page})=>{
+  await page.goto("/en");
+  const footer=page.getByRole("contentinfo");
+  await expect(footer.getByRole("link",{name:"Call +57 300 123 1234"})).toHaveAttribute("href","tel:+573001231234");
+  await expect(footer.getByRole("link",{name:"reservas@tallerya.com"})).toHaveAttribute("href","mailto:reservas@tallerya.com");
+  await footer.getByRole("link",{name:"Privacy notice"}).click();
+  await expect(page.getByRole("heading",{name:"TallerYA Privacy Notice"})).toBeVisible();
+  await page.goto("/es/learn");
+  await expect(page.getByRole("contentinfo").getByRole("link",{name:"Aviso de privacidad"})).toHaveAttribute("href","/es/privacy");
 });

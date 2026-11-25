@@ -37,7 +37,7 @@ def health():
 passwords = PasswordHash.recommended()
 dummy_password = passwords.hash("unused-placeholder-password")
 bearer = HTTPBearer(auto_error=False)
-privacy_version = "1"
+privacy_version = "2"
 DAY = 86400
 ACTIVE = "'hold','payment','confirmed'"
 schema = """
@@ -178,6 +178,10 @@ class Workshop(BaseModel):
     published: bool = False
     teacher: int | None = None
     venue: str = Field(default="", max_length=180)
+
+
+class MoveBooking(BaseModel):
+    workshop: int = Field(gt=0)
 
 
 class Sent(BaseModel):
@@ -363,6 +367,14 @@ def update_workshop(workshop_id: int, workshop: Workshop, _=Depends(staff)):
     return {"id": workshop_id}
 
 
+@app.post("/admin/workshops/{workshop_id}/archive", status_code=204)
+def archive_workshop(workshop_id: int, _=Depends(owner)):
+    with db() as connection:
+        find(connection, "SELECT id FROM workshops WHERE id=?", (workshop_id,))
+        connection.execute("UPDATE workshops SET published=0 WHERE id=?", (workshop_id,))
+    return Response(status_code=204)
+
+
 @app.get("/admin/workshops")
 def agenda(user=Depends(current)):
     if user["role"] not in ("owner", "manager", "teacher"):
@@ -426,7 +438,7 @@ def booking_view(row):
 def my_bookings(user=Depends(current)):
     with db() as connection:
         expire(connection, now())
-        ids = connection.execute("SELECT id FROM bookings WHERE \"user\"=? ORDER BY id DESC", (user["id"],))
+        ids = connection.execute("SELECT id FROM bookings WHERE \"user\"=? AND status!='removed' ORDER BY id DESC", (user["id"],))
         return [booking_view(booking_details(connection, row["id"])) for row in ids]
 
 
@@ -434,10 +446,41 @@ def my_bookings(user=Depends(current)):
 def all_bookings(_=Depends(staff)):
     with db() as connection:
         expire(connection, now())
-        ids = connection.execute("SELECT id,\"user\" FROM bookings ORDER BY id DESC")
+        ids = connection.execute("SELECT id,\"user\" FROM bookings WHERE status!='removed' ORDER BY id DESC")
         return [booking_view(booking_details(connection, row["id"])) | {
             "contact": dict(find(connection, "SELECT name,email,phone FROM users WHERE id=?", (row["user"],)))
         } for row in ids]
+
+
+@app.put("/admin/bookings/{booking_id}", status_code=204)
+def move_booking(booking_id: int, request: MoveBooking, _=Depends(owner)):
+    with db() as connection:
+        clock = now()
+        expire(connection, clock)
+        booking = booking_details(connection, booking_id)
+        conflict(booking["status"] != "hold", "booking_move_requires_unpaid_hold")
+        if booking["workshop"] != request.workshop:
+            target = find(connection, "SELECT * FROM workshops WHERE id=? AND published=1", (request.workshop,))
+            conflict(target["starts"] - clock < DAY, "booking_closed")
+            conflict(target["price"] != booking["price"] or target["currency"] != booking["currency"],
+                     "booking_move_requires_same_price")
+            conflict(slots(connection, target) <= 0, "sold_out")
+            conflict(connection.execute(f'SELECT 1 FROM bookings WHERE workshop=? AND "user"=? AND status IN ({ACTIVE})',
+                                        (target["id"], booking["user"])).fetchone(), "existing_booking")
+            connection.execute("UPDATE bookings SET workshop=? WHERE id=?", (target["id"], booking_id))
+            connection.execute("UPDATE outbox SET workshop=? WHERE dedupe=? AND sent IS NULL",
+                               (target["id"], f"hold:{booking_id}"))
+    return Response(status_code=204)
+
+
+@app.delete("/admin/bookings/{booking_id}", status_code=204)
+def remove_booking(booking_id: int, _=Depends(owner)):
+    with db() as connection:
+        booking = booking_details(connection, booking_id)
+        if booking["status"] != "removed":
+            conflict(booking["status"] not in ("cancelled", "expired") or booking["paid"], "booking_remove_requires_inactive_unpaid")
+            connection.execute("UPDATE bookings SET status='removed' WHERE id=?", (booking_id,))
+    return Response(status_code=204)
 
 
 @app.post("/admin/bookings/{booking_id}/payment-sent")
@@ -470,25 +513,34 @@ def paid(booking_id: int, _=Depends(staff)):
 
 @app.post("/me/bookings/{booking_id}/cancel")
 def cancel_booking(booking_id: int, user=Depends(current)):
+    return cancel_registration(booking_id, user["id"])
+
+
+@app.post("/admin/bookings/{booking_id}/cancel")
+def owner_cancel_booking(booking_id: int, _=Depends(owner)):
+    return cancel_registration(booking_id)
+
+
+def cancel_registration(booking_id, user_id=None):
     with db() as connection:
         clock = now()
         expire(connection, clock)
         booking = booking_details(connection, booking_id)
-        if booking["user"] != user["id"]:
+        if user_id is not None and booking["user"] != user_id:
             raise HTTPException(404, "not_found")
-        conflict(booking["starts"] - clock < 2 * DAY, "cancellation_closed")
+        conflict(user_id is not None and booking["starts"] - clock < 2 * DAY, "cancellation_closed")
         if booking["status"] == "cancelled":
             return {"status": "cancelled"}
         conflict(booking["status"] not in ("hold", "payment", "confirmed"), "invalid_state")
         workshop = find(connection, "SELECT * FROM workshops WHERE id=?", (booking["workshop"],))
         was_full = slots(connection, workshop) == 0
         connection.execute("UPDATE bookings SET status='cancelled',refund=? WHERE id=?", (int(bool(booking["paid"])), booking_id))
-        if was_full and workshop["published"]:
+        if was_full and workshop["published"] and workshop["starts"] >= clock + DAY:
             base = os.getenv("TALLERYA_PUBLIC_URL", "http://localhost:3000").rstrip("/")
             for recipient in connection.execute("""
                 SELECT u.* FROM interests i JOIN users u ON i."user"=u.id
                 WHERE i.workshop=? AND u.notices=1 AND u.deleted=0 AND u.id!=?
-            """, (workshop["id"], user["id"])):
+            """, (workshop["id"], booking["user"])):
                 queue(connection, recipient, workshop["id"], f"available:{booking_id}:{recipient['id']}", "available",
                       ("Hay una plaza disponible", f"Consulta disponibilidad en {base}/es?taller={workshop['id']}#taller-{workshop['id']}"),
                       ("A place is available", f"Check availability at {base}/en?taller={workshop['id']}#talleres"))

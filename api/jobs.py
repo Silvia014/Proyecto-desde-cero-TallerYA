@@ -17,6 +17,7 @@ def run():
     host = os.getenv("TALLERYA_SMTP_HOST")
     if not host:
         return
+    sender = os.getenv("TALLERYA_SMTP_FROM") or os.environ["TALLERYA_SMTP_USER"]
     with smtplib.SMTP_SSL(host, int(os.getenv("TALLERYA_SMTP_PORT", "465")), timeout=10) as smtp:
         smtp.login(os.environ["TALLERYA_SMTP_USER"], os.environ["TALLERYA_SMTP_PASSWORD"])
         while True:
@@ -30,12 +31,17 @@ def run():
                     return
                 allowed = not row["deleted"] and (row["kind"] != "available" or
                           (row["notices"] and row["published"] and row["starts"] >= now() + DAY))
+                if allowed and row["kind"] in ("hold", "paid"):
+                    expected = ("hold", "payment") if row["kind"] == "hold" else ("confirmed",)
+                    booking = connection.execute("SELECT status FROM bookings WHERE id=?",
+                                                 (int(row["dedupe"].split(":")[1]),)).fetchone()
+                    allowed = booking is not None and booking["status"] in expected
                 if allowed:
                     message = EmailMessage()
-                    message["From"] = os.environ["TALLERYA_SMTP_USER"]
+                    message["From"] = sender
                     message["To"] = row["email"]
                     message["Subject"] = row["subject"]
-                    message["Message-ID"] = f"<tallerya-{row['id']}@{os.environ['TALLERYA_SMTP_USER'].split('@')[-1]}>"
+                    message["Message-ID"] = f"<tallerya-{row['id']}@{sender.rsplit('@',1)[-1]}>"
                     message.set_content(row["body"])
                     smtp.send_message(message)
                 connection.execute("UPDATE outbox SET sent=? WHERE id=?", (now(), row["id"]))

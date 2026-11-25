@@ -7,7 +7,7 @@ import {dateOf,money} from "../../shared";
 import type {Locale,Workshop} from "../../shared";
 
 type User={id:number;name:string;email:string;phone:string;notices:boolean;role:"student"|"teacher"|"manager"|"owner"};
-type Booking={id:number;workshop:number;user:number;status:string;es:string;en:string;starts:number;minutes:number;contact?:{name:string;email:string;phone:string};deadline:number|null;has_certificate:boolean;refund:number;refunded:number};
+type Booking={id:number;workshop:number;user:number;status:string;es:string;en:string;starts:number;minutes:number;contact?:{name:string;email:string;phone:string};deadline:number|null;has_certificate:boolean;refund:number;refunded:number;paid:number;price:number;currency:string};
 type Settlement={currency:string;count:number;paid:number;refunded:number;tallerya:number;teacher:number};
 type Overview={
   popular:{id:number;es:string;en:string;registrations:number;confirmed:number}[];
@@ -70,10 +70,14 @@ export default function Portal({locale,selected}:{locale:Locale;selected?:number
   const [events,setEvents]=useState<EventCount[]>([]);
   const [workshop,setWorkshop]=useState<Workshop|null>(null);
   const [registrationSearch,setRegistrationSearch]=useState("");
+  const [moving,setMoving]=useState<number|null>(null);
   const [editing,setEditing]=useState<Workshop|null>(null);
   const [settlement,setSettlement]=useState<Settlement[]|null>(null);
   const isStaff=profile?.role==="owner" || profile?.role==="manager";
   const errors:Record<string,string>={
+    booking_move_requires_unpaid_hold:t("Solo se pueden cambiar de edición las reservas sin instrucciones de pago.","Only bookings awaiting payment instructions can be moved."),
+    booking_move_requires_same_price:t("La otra edición debe tener el mismo precio y moneda.","The other workshop must have the same price and currency."),
+    booking_remove_requires_inactive_unpaid:t("Solo se pueden retirar inscripciones canceladas o vencidas sin cobros.","Only cancelled or expired registrations without a payment can be removed."),
     invalid_credentials:t("Correo o contraseña incorrectos.","Incorrect email or password."),
     existing_booking:t("Ya tienes una reserva activa para esta edición.","You already have an active booking."),
     sold_out:t("No quedan plazas.","No places remain."),
@@ -179,7 +183,13 @@ export default function Portal({locale,selected}:{locale:Locale;selected?:number
         <div className="flex flex-wrap gap-4"><button className="button">{register?t("Crear cuenta","Create account"):t("Entrar","Sign in")}</button>
           <button type="button" className="underline" onClick={()=>{setRegister(!register);setMessage("");}}>{register?t("Ya tengo cuenta","I have an account"):t("Crear cuenta","Create account")}</button></div>
       </form>) : <>
-      <div className="flex items-center justify-between gap-4"><p>{profile.name}</p>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <p>{profile.name} · {({owner:"Superadmin",teacher:t("Profesor","Teacher"),manager:t("Gestor","Manager"),student:t("Estudiante","Student")})[profile.role]}</p>
+        {isStaff && <nav className="flex flex-wrap gap-3" aria-label={t("Panel de gestión","Management dashboard")}>
+          <a className="underline" href="#workshop-admin">{t("Talleres","Workshops")}</a>
+          <a className="underline" href="#booking-admin">{t("Todas las inscripciones","All registrations")}</a>
+          {profile.role==="owner" && <a className="underline" href="#user-admin">{t("Usuarios","Users")}</a>}
+        </nav>}
         {button(t("Cerrar sesión","Sign out"),async()=>{await request("logout","POST");setProfile(null);setBookings([]);})}</div>
       {profile.role==="student" && <>
         {selected && title(workshop?.[locale] ?? t("Taller no disponible","Workshop not available"),workshop && <>
@@ -209,14 +219,19 @@ export default function Portal({locale,selected}:{locale:Locale;selected?:number
             await request("me/preferences","PUT",{notices});setProfile({...profile,notices});
           });}}/> {t("Recibir novedades y avisos de plazas","Receive news and availability notices")}</label>)}
       </>}
-      {(isStaff || profile.role==="teacher") && title(t("Agenda de cursos","Workshop schedule"),agenda.map(item=><article key={item.id} className="border-t border-sand/60 py-3">
+      {(isStaff || profile.role==="teacher") && title(t("Agenda de cursos","Workshop schedule"),<div id="workshop-admin">{agenda.map(item=><article key={item.id} className="border-t border-sand/60 py-3">
         <h3 className="font-bold">{item[locale]}</h3><p>{dateOf(item.starts,locale)} · {item.available}/{item.capacity} {t("plazas libres","places available")}</p>
         {item.counts && <p>{t("Pendientes","Pending")}: {(item.counts.hold??0)+(item.counts.payment??0)} · {t("Confirmadas","Confirmed")}: {item.counts.confirmed??0}</p>}
         {isStaff && <div className="mt-2 flex flex-wrap gap-2">
-          <button className="button" onClick={()=>setEditing(item)}>{t("Editar","Edit")}</button>
+          <button className="button" onClick={()=>{setEditing(item);requestAnimationFrame(()=>document.getElementById("workshop-editor")?.scrollIntoView());}}>{t("Editar","Edit")}</button>
+          {profile.role==="owner" && item.published && button(t("Archivar taller","Archive workshop"),async()=>{
+            if(confirm(t("¿Retirar el taller del catálogo? Se conservarán sus inscripciones.","Remove this workshop from the catalogue? Its registrations will be kept."))){
+              await request(`admin/workshops/${item.id}/archive`,"POST");await refresh(profile);
+            }
+          })}
           {button(t("Ver liquidación","View settlement"),async()=>setSettlement(await request<Settlement[]>(`admin/workshops/${item.id}/settlement`)))}
         </div>}
-      </article>))}
+      </article>)}</div>)}
       {isStaff && <>
         {overview && title(t("Talleres populares","Popular workshops"),<div className="overflow-x-auto">
           <table aria-label={t("Talleres populares","Popular workshops")} className="w-full text-left">
@@ -233,7 +248,7 @@ export default function Portal({locale,selected}:{locale:Locale;selected?:number
         </>)}
         {settlement && title(t("Reparto antes de impuestos y gastos","Split before taxes and expenses"),
           settlement.length ? settlement.map(row=><p key={row.currency}>{row.count} {t("pagos","payments")} · {t("Cobrado","Paid")} {money(row.paid,row.currency,locale)} · {t("Reembolsado","Refunded")} {money(row.refunded,row.currency,locale)} · TallerYA {money(row.tallerya,row.currency,locale)} · {t("Profesor","Instructor")} {money(row.teacher,row.currency,locale)}</p>) : <p>{t("Sin cobros registrados.","No payments recorded.")}</p>)}
-        {title(editing?t("Editar edición","Edit workshop"):t("Nueva edición","New workshop"),<form key={editing?.id??"new"} className="grid gap-3 sm:grid-cols-2" onSubmit={form(saveWorkshop)}>
+        {title(editing?t("Editar edición","Edit workshop"):t("Nueva edición","New workshop"),<form id="workshop-editor" key={editing?.id??"new"} className="grid gap-3 sm:grid-cols-2" onSubmit={form(saveWorkshop)}>
           <Field name="es" label={t("Nombre en español","Spanish title")} value={editing?.es}/>
           <Field name="en" label={t("Nombre en inglés","English title")} value={editing?.en}/>
           <Field name="starts" type="datetime-local" label={t("Inicio en Bogotá","Start in Bogotá")} value={editing?new Date((editing.starts-18000)*1000).toISOString().slice(0,16):undefined}/>
@@ -247,7 +262,7 @@ export default function Portal({locale,selected}:{locale:Locale;selected?:number
           <div className="flex flex-wrap gap-2"><button className="button">{t("Guardar","Save")}</button>
             {editing && <button type="button" className="underline" onClick={()=>setEditing(null)}>{t("Dejar de editar","Stop editing")}</button>}</div>
         </form>)}
-        {title(t("Gestionar inscripciones","Manage registrations"),<>
+        {title(t("Gestionar inscripciones","Manage registrations"),<div id="booking-admin">
           <label className="field max-w-md">{t("Buscar inscripciones","Search registrations")}
             <input type="search" value={registrationSearch} onChange={event=>setRegistrationSearch(event.target.value)}/>
           </label>
@@ -255,6 +270,30 @@ export default function Portal({locale,selected}:{locale:Locale;selected?:number
           {registrations.map(booking=><article key={booking.id} className="space-y-2 border-t border-sand/60 py-3">
           <h3 className="font-bold">#{booking.id} · {booking[locale]} · {status[booking.status]}</h3>
           {booking.contact && <p>{booking.contact.name} · {booking.contact.phone} · {booking.contact.email}</p>}
+          {profile.role==="owner" && <div className="flex flex-wrap gap-2">
+            {booking.status==="hold" && <button className="button" onClick={()=>setMoving(moving===booking.id?null:booking.id)}>{t("Cambiar de edición","Move registration")}</button>}
+            {["hold","payment","confirmed"].includes(booking.status) && button(t("Cancelar inscripción","Cancel registration"),async()=>{
+              if(confirm(t("¿Cancelar esta inscripción?","Cancel this registration?"))){
+                await request(`admin/bookings/${booking.id}/cancel`,"POST");await refresh(profile);
+              }
+            })}
+            {["cancelled","expired"].includes(booking.status) && booking.paid===0 && button(t("Retirar inscripción","Remove registration"),async()=>{
+              if(confirm(t("¿Retirar esta inscripción del listado?","Remove this registration from the list?"))){
+                await request(`admin/bookings/${booking.id}`,"DELETE");await refresh(profile);
+              }
+            })}
+          </div>}
+          {moving===booking.id && booking.status==="hold" && <form className="flex flex-wrap items-end gap-2" onSubmit={form(async data=>{
+            await request(`admin/bookings/${booking.id}`,"PUT",{workshop:Number(data.get("workshop"))});
+            setMoving(null);await refresh(profile);
+          })}>
+            <label className="field">{t("Nueva edición","New workshop")}<select name="workshop" required>
+              <option value="">{t("Seleccionar","Select")}</option>
+              {agenda.filter(item=>item.id!==booking.workshop && item.published && item.available>0 && item.starts>=Date.now()/1000+86400 &&
+                item.price===booking.price && item.currency===booking.currency).map(item=>
+                <option key={item.id} value={item.id}>{item[locale]} · {dateOf(item.starts,locale)}</option>)}
+            </select></label><button className="button">{t("Guardar cambio","Save change")}</button>
+          </form>}
           {booking.status==="hold" && <form className="flex flex-wrap items-end gap-2" onSubmit={form(async data=>{
             const sent=await request<{deadline:number}>(`admin/bookings/${booking.id}/payment-sent`,"POST",{payment_url:data.get("url")});
             await refresh(profile);setMessage(t("Plazo de pago: ","Payment deadline: ")+dateOf(sent.deadline,locale));
@@ -263,7 +302,7 @@ export default function Portal({locale,selected}:{locale:Locale;selected?:number
           {booking.refund>0 && <form className="flex flex-wrap items-end gap-2" onSubmit={form(async data=>{
             await request(`admin/bookings/${booking.id}/refund`,"POST",{amount:Math.round(Number(data.get("amount"))*100)});await refresh(profile);
           })}><Field name="amount" type="number" step=".01" min={0.01} value={booking.refunded/100||undefined} label={t("Total reembolsado","Total refunded")}/><button className="button">{t("Registrar reembolso","Record refund")}</button></form>}
-        </article>)}</>)}
+        </article>)}</div>)}
         {title(t("Certificados PDF","PDF certificates"),<form className="flex flex-wrap items-end gap-3" onSubmit={form(async data=>{
           await request(`admin/bookings/${certificateBooking}/certificate`,"PUT",data.get("pdf"));
           await refresh(profile);
@@ -282,7 +321,7 @@ export default function Portal({locale,selected}:{locale:Locale;selected?:number
         {title(t("Analítica de los últimos 30 días","Analytics for the last 30 days"),
           events.length ? events.map(event=><p key={event.name+event.locale}>{event.name} ({event.locale}): {event.total}</p>) : <p>{t("Sin eventos registrados.","No events recorded.")}</p>)}
       </>}
-      {profile.role==="owner" && title(t("Usuarios","Users"),users.filter(user=>user.role!=="owner").map(user=><article key={user.id} className="space-y-2 border-t border-sand/60 py-3">
+      {profile.role==="owner" && title(t("Usuarios","Users"),<div id="user-admin">{users.filter(user=>user.role!=="owner").map(user=><article key={user.id} className="space-y-2 border-t border-sand/60 py-3">
         <h3 className="font-bold">{user.name} · {user.email}</h3>
         <form className="flex flex-wrap items-end gap-2" onSubmit={form(async data=>{
           await request(`admin/users/${user.id}/role`,"PUT",{role:data.get("role")});await refresh(profile);
@@ -296,7 +335,7 @@ export default function Portal({locale,selected}:{locale:Locale;selected?:number
         {button(t("Eliminar usuario","Delete user"),async()=>{
           if(confirm(t("¿Eliminar este usuario?","Delete this user?"))){await request(`admin/users/${user.id}`,"DELETE");await refresh(profile);}
         })}
-      </article>))}
+      </article>)}</div>)}
     </>}
   </main>;
 }

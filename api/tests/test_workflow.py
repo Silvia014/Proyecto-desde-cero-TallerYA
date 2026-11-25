@@ -140,3 +140,26 @@ def test_permissions_certificates_and_telemetry(case):
     assert client.get("/admin/telemetry",headers=admin).json()[0]["total"] == 1
     assert client.put(f"/admin/users/{student_id}/password", headers=admin, json={"password":"Replacement-password-123"}).status_code == 204
     assert client.get("/me",headers=student).status_code == 401
+
+
+def test_owner_can_move_cancel_and_remove_an_unpaid_registration(case):
+    client, clock = case
+    admin, _ = account(client, "admin", "owner")
+    teacher, _ = account(client, "teacher", "teacher")
+    student, _ = account(client, "student")
+    first = workshop(client, admin, clock[0] + main.DAY * 5)
+    second = workshop(client, admin, clock[0] + main.DAY * 6)
+    booking = client.post(f"/workshops/{first}/book", headers=student).json()["id"]
+    path = f"/admin/bookings/{booking}"
+    assert client.get("/admin/bookings", headers=teacher).status_code == 403
+    assert client.put(path, headers=teacher, json={"workshop":second}).status_code == 403
+    assert client.delete(path, headers=admin).status_code == 409
+    assert client.put(path, headers=admin, json={"workshop":second}).status_code == 204
+    assert client.get(f"/workshops/{first}").json()["available"] == 1
+    assert client.get(f"/workshops/{second}").json()["available"] == 0
+    assert client.post(path+"/cancel", headers=admin).status_code == 200
+    assert client.delete(path, headers=admin).status_code == 204
+    assert client.get("/admin/bookings", headers=admin).json() == []
+    assert client.get("/me/bookings", headers=student).json() == []
+    assert client.post(f"/admin/workshops/{second}/archive",headers=admin).status_code == 204
+    assert client.get(f"/workshops/{second}").status_code == 404

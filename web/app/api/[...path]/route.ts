@@ -5,7 +5,7 @@ const backend = (process.env.TALLERYA_API || "http://127.0.0.1:8000").replace(/\
 const routes = [
   /^register$/, /^login$/, /^telemetry$/, /^me(?:\/preferences|\/bookings(?:\/\d+\/(?:cancel|certificate))?)?$/,
   /^workshops(?:\/\d+(?:\/(?:book|interest))?)?$/,
-  /^admin\/(?:telemetry|overview|teachers|users(?:\/\d+(?:\/(?:role|password))?)?|workshops(?:\/\d+(?:\/settlement)?)?|bookings(?:\/\d+\/(?:payment-sent|paid|refund|certificate))?)$/,
+  /^admin\/(?:telemetry|overview|teachers|users(?:\/\d+(?:\/(?:role|password))?)?|workshops(?:\/\d+(?:\/(?:settlement|archive))?)?|bookings(?:\/\d+(?:\/(?:payment-sent|paid|refund|certificate|cancel))?)?)$/,
 ];
 
 async function proxy(request: NextRequest, {params}: {params: Promise<{path:string[]}>}) {

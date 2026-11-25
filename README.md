@@ -121,3 +121,9 @@ Run `python -m api.jobs` on a scheduled worker for queued email and periodic exp
 ## Redesign preview
 
 Deploy the `codex/tallerya-redesign` branch with the existing Vercel root directory (`web`) and open the deployment URL. The default homepage (`/`, `/es`, and `/en`) now uses the redesign with current catalogue data and Learn booking links. The original isolated design preview remains available at `/redesign`.
+
+## Booking operations
+
+Learn shows the signed-in role and links to the workshop, registration and user sections. The owner can move a hold to an available workshop with the same price and currency, cancel a registration, remove unpaid cancelled or expired records from the list, and archive a workshop while preserving booking history. Use the existing owner, teacher and student demo accounts for local testing.
+
+On hosted Supabase, `supabase/operations/booking-worker.sql` schedules expiry and telemetry retention once per minute. Outbox delivery is separate. Set SMTP credentials and `TALLERYA_SMTP_FROM` to a sender verified by the email provider, then run `python -m api.jobs --loop` in a worker process. Stale hold messages for cancelled or expired bookings are skipped.
