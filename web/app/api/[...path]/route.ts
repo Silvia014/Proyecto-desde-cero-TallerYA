@@ -31,7 +31,7 @@ async function proxy(request: NextRequest, {params}: {params: Promise<{path:stri
   const type = request.headers.get("content-type");
   if (type) headers.set("content-type", type);
   const token = request.cookies.get(cookie)?.value;
-  if (token) headers.set("authorization", "Bearer " + token);
+  if (token && path !== "telemetry") headers.set("authorization", "Bearer " + token);
   let upstream: Response;
   try {
     upstream = await fetch(backend + "/" + path, {

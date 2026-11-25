@@ -6,7 +6,15 @@ export default async function Privacy({params}:{params:Promise<{locale:string}>}
   if(locale!=="es" && locale!=="en") notFound();
   const en=locale==="en";
   const t=(es:string,english:string)=>en?english:es;
-  return <main className="shell py-12">
+  return <>
+    <header className="border-b border-sand">
+      <nav className="shell py-4">
+        <a href={`/${locale}`} aria-label="TallerYA" className="text-3xl font-black tracking-tight text-cocoa">
+          Taller<span className="text-caramel">YA</span>
+        </a>
+      </nav>
+    </header>
+    <main className="shell py-12">
     <h1 className="subhead">{t("Aviso de privacidad de TallerYA","TallerYA Privacy Notice")}</h1>
     <div className="max-w-3xl space-y-6">
       <section className="space-y-2">
@@ -16,8 +24,8 @@ export default async function Privacy({params}:{params:Promise<{locale:string}>}
       </section>
       <section className="space-y-2">
         <h2 className="text-xl font-bold">{t("Datos y finalidades","Data and purposes")}</h2>
-        <p>{t("Usamos tu nombre, correo, teléfono e idioma para gestionar tu cuenta, reservas, cancelaciones, pagos registrados y certificados. Guardamos el estado de la reserva, tus preferencias y la versión del aviso aceptada. Cuando nos das permiso, usamos tu correo para enviar avisos de plazas y novedades. También puedes optar por recuentos agregados de navegación.",
-          "We use your name, email address, phone number and language to manage your account, bookings, cancellations, payment records and certificates. We keep booking status, preferences and the accepted notice version. With your permission, we use your email for availability alerts and updates. You can also opt into aggregate navigation counts.")}</p>
+        <p>{t("Usamos tu nombre, correo, teléfono e idioma para gestionar tu cuenta, reservas, cancelaciones, pagos registrados y certificados. Guardamos el estado de la reserva, tus preferencias y la versión del aviso aceptada. Cuando nos das permiso, usamos tu correo para enviar avisos de plazas y novedades. Para entender el uso del sitio, contamos acciones por tipo, idioma y día. Estos recuentos no usan cookies de analítica y no guardan nombres, correos, direcciones IP, identificadores de cuenta ni historiales por visitante.",
+          "We use your name, email address, phone number and language to manage your account, bookings, cancellations, payment records and certificates. We keep booking status, preferences and the accepted notice version. With your permission, we use your email for availability alerts and updates. To understand site usage, we count actions by type, language and day. These counts use no analytics cookies and store no names, email addresses, IP addresses, account identifiers or per-visitor histories.")}</p>
       </section>
       <section className="space-y-2">
         <h2 className="text-xl font-bold">{t("Acceso y conservación","Access and retention")}</h2>
@@ -26,9 +34,9 @@ export default async function Privacy({params}:{params:Promise<{locale:string}>}
       </section>
       <section className="space-y-2">
         <h2 className="text-xl font-bold">{t("Tus derechos y preferencias","Your rights and preferences")}</h2>
-        <p>{t("Contacta a TallerYA para consultar, corregir o solicitar la eliminación de tus datos o la revocación de tu autorización, según corresponda. Puedes cambiar los avisos opcionales en Learn y la analítica desde la portada. Los mensajes necesarios para una reserva se gestionan aparte.",
-          "Contact TallerYA to access, correct or request deletion of your data or to withdraw permission where applicable. You can change optional notifications in Learn and analytics on the homepage. Messages needed to manage a booking are handled separately.")}</p>
+        <p>{t("Contacta a TallerYA para consultar, corregir o solicitar la eliminación de tus datos o la revocación de tu autorización, según corresponda. Puedes cambiar los avisos opcionales en Learn. Los mensajes necesarios para una reserva se gestionan aparte.",
+          "Contact TallerYA to access, correct or request deletion of your data or to withdraw permission where applicable. You can change optional notifications in Learn. Messages needed to manage a booking are handled separately.")}</p>
       </section>
     </div>
-  </main>;
+  </main></>;
 }

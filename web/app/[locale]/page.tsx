@@ -1,6 +1,6 @@
 import {notFound} from "next/navigation";
 import type {Metadata} from "next";
-import {AnalyticsChoice,HeroPoster,TrackedLink,WorkshopGallery,LanguageSelector} from "../public-tools";
+import {CatalogueView,HeroPoster,TrackedLink,WorkshopGallery,LanguageSelector} from "../public-tools";
 import {Catalog} from "../catalog";
 import "../marketplace.css";
 import type {Workshop} from "../shared";
@@ -113,7 +113,7 @@ export default async function Landing({params}:Params){
         <h2 className="subhead">Learn TallerYA</h2><p className="mb-4">{t("Reserva con el Club, consulta tus cursos o descarga tu certificado.","Book with the Club, see your courses or download your certificate.")}</p>
         <TrackedLink name="learn_open" locale={locale} href={learn}>{t("Entrar a Learn","Open Learn")}</TrackedLink>
       </section>
-      <AnalyticsChoice locale={locale}/>
+      <CatalogueView locale={locale}/>
     </main>
   </div>;
 }

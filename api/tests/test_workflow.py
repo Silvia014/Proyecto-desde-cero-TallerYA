@@ -136,8 +136,11 @@ def test_permissions_certificates_and_telemetry(case):
     assert client.get(url,headers=student).content == PDF
     assert client.post("/telemetry",json={"name":"booking_open","locale":"en","consent":False}).status_code == 422
     assert client.post("/telemetry",json={"name":"booking_open","locale":"en","consent":True}).status_code == 204
+    assert client.post("/telemetry",json={"name":"booking_open","locale":"en"}).status_code == 204
+    with main.db() as connection:
+        assert all(event["happened"] % main.DAY == 0 for event in connection.execute("SELECT happened FROM events"))
     assert client.get("/admin/telemetry",headers=student).status_code == 403
-    assert client.get("/admin/telemetry",headers=admin).json()[0]["total"] == 1
+    assert client.get("/admin/telemetry",headers=admin).json()[0]["total"] == 2
     assert client.put(f"/admin/users/{student_id}/password", headers=admin, json={"password":"Replacement-password-123"}).status_code == 204
     assert client.get("/me",headers=student).status_code == 401
 

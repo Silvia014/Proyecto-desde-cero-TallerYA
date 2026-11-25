@@ -37,7 +37,7 @@ def health():
 passwords = PasswordHash.recommended()
 dummy_password = passwords.hash("unused-placeholder-password")
 bearer = HTTPBearer(auto_error=False)
-privacy_version = "2"
+privacy_version = "3"
 DAY = 86400
 ACTIVE = "'hold','payment','confirmed'"
 schema = """
@@ -203,7 +203,7 @@ class RoleChange(BaseModel):
 class Event(BaseModel):
     name: Literal["catalog_view", "booking_open", "recordings_open", "learn_open"]
     locale: Literal["es", "en"]
-    consent: Literal[True]
+    consent: Literal[True] = True  # Accept the earlier client payload during deployment.
 
 
 def public_user(user):
@@ -601,7 +601,7 @@ def certificate(booking_id: int, user=Depends(current)):
 @app.post("/telemetry", status_code=204)
 def track(event: Event):
     with db() as connection:
-        connection.execute("INSERT INTO events(name,locale,happened) VALUES(?,?,?)", (event.name, event.locale, now()))
+        connection.execute("INSERT INTO events(name,locale,happened) VALUES(?,?,?)", (event.name, event.locale, now() // DAY * DAY))
     return Response(status_code=204)
 
 
@@ -610,7 +610,7 @@ def analytics(_=Depends(staff)):
     with db() as connection:
         return [dict(row) for row in connection.execute(
             "SELECT name,locale,count(*) AS total FROM events WHERE happened>=? GROUP BY name,locale",
-            (now() - 30 * DAY,))]
+            ((now() // DAY - 29) * DAY,))]
 
 
 @app.get("/admin/teachers")

@@ -125,3 +125,17 @@ test("the site publishes booking contacts and a bilingual privacy notice",async(
   await page.goto("/es/learn");
   await expect(page.getByRole("contentinfo").getByRole("link",{name:"Aviso de privacidad"})).toHaveAttribute("href","/es/privacy");
 });
+
+test("the privacy logo returns to the matching landing and analytics stay out of the UI",async({page})=>{
+  await page.goto("/en/privacy");
+  await page.getByRole("link",{name:"TallerYA",exact:true}).click();
+  await expect(page).toHaveURL(/\/en$/);
+  await expect(page.getByText("Analytics preferences")).toHaveCount(0);
+  const event=page.waitForRequest(request=>request.url().endsWith("/api/telemetry") && request.method()==="POST");
+  await page.reload();
+  expect((await event).postDataJSON()).toEqual({name:"catalog_view",locale:"en"});
+  await page.goto("/privacy");
+  await expect(page).toHaveURL(/\/es\/privacy$/);
+  await page.getByRole("link",{name:"TallerYA",exact:true}).click();
+  await expect(page).toHaveURL(/\/es$/);
+});

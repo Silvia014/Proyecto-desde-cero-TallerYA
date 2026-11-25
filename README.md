@@ -51,7 +51,7 @@ Las pruebas de integración de FastAPI usan una base temporal. Cubren concurrenc
 - El gestor envía el enlace o QR por WhatsApp y registra el envío y el cobro en Learn. El plazo se calcula desde el envío registrado. A quien envíe el WhatsApp se le muestra el vencimiento para que lo comunique. El sistema exige poder dar las 24 horas completas antes del inicio. Si no se registró un envío cuando quedan menos de 24 horas, la plaza apartada caduca. Las reservas pendientes de pago vencen automáticamente al terminar su plazo.
 - El gestor publica los PDF una vez finalizada la edición. Están disponibles para el titular de la reserva confirmada.
 - Las liquidaciones aplican 20 % para TallerYA y 80 % para el formador tras reembolsos, con redondeo por cobro. La política de devolución real está pendiente. El borrado por el dueño anonimiza la cuenta y conserva los registros financieros.
-- La analítica guarda recuentos agregables por evento e idioma tras el consentimiento separado. Los eventos se conservan hasta 90 días con el trabajo programado. El panel muestra los últimos 30 días. Los clics se pueden repetir y los recuentos no equivalen a usuarios únicos.
+- La analítica guarda recuentos por evento, idioma y día sin cookies de analítica ni identificadores de visitantes. Los eventos se conservan hasta 90 días con el trabajo programado. El panel muestra los últimos 30 días. Los clics se pueden repetir y los recuentos no equivalen a usuarios únicos.
 - Antes de publicar, configura los dominios, los enlaces de YouTube, el correo real y la política de privacidad definitiva. Configura protección de acceso y límites de tráfico en producción, copias de seguridad y monitorización. El MVP permite gestión manual de WhatsApp y pagos.
 
 ## Docker Compose y datos de prueba

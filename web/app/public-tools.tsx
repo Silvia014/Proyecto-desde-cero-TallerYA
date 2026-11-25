@@ -1,39 +1,23 @@
 "use client";
 
-import {useEffect, useRef, useState} from "react";
+import {useEffect, useRef} from "react";
 import type {Locale} from "./shared";
 
-const consentKey = "tallerya-analytics";
-
 export function track(name:string, locale:Locale) {
-  if (localStorage.getItem(consentKey) === "yes") {
-    void fetch("/api/telemetry",{method:"POST",headers:{"content-type":"application/json"},
-      body:JSON.stringify({name,locale,consent:true}),keepalive:true}).catch(() => {});
-  }
+  void fetch("/api/telemetry",{
+    method:"POST", credentials:"omit", referrerPolicy:"no-referrer", keepalive:true,
+    headers:{"content-type":"application/json"}, body:JSON.stringify({name,locale}),
+  }).catch(()=>{});
 }
 
-export function AnalyticsChoice({locale}:{locale:Locale}) {
-  const [choice,setChoice] = useState<string | null>(null);
-  const [ready,setReady] = useState(false);
-  useEffect(() => {
-    setChoice(localStorage.getItem(consentKey));
-    setReady(true);
+export function CatalogueView({locale}:{locale:Locale}) {
+  const lastLocale=useRef<Locale|null>(null);
+  useEffect(()=>{
+    if(lastLocale.current===locale) return;
+    lastLocale.current=locale;
     track("catalog_view",locale);
   },[locale]);
-  if (!ready) return null;
-  function decide(value:string) {
-    localStorage.setItem(consentKey,value);
-    setChoice(value);
-    if (value === "yes") track("catalog_view",locale);
-  }
-  return <details className="py-5" open={choice===null}>
-    <summary className="cursor-pointer">{locale==="es"?"Preferencias de analítica":"Analytics preferences"}</summary>
-    <p className="my-2">{locale==="es"?"Puedes autorizar recuentos de navegación sin guardar tu nombre ni correo.":"You can allow navigation counts that omit your name and email."}</p>
-    <div className="flex gap-4">
-      <button className="button" onClick={()=>decide("yes")} aria-pressed={choice==="yes"}>{locale==="es"?"Aceptar":"Allow"}</button>
-      <button className="button" onClick={()=>decide("no")} aria-pressed={choice==="no"}>{locale==="es"?"Desactivar":"Disable"}</button>
-    </div>
-  </details>;
+  return null;
 }
 
 export function HeroPoster(){
